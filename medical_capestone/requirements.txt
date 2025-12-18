@@ -1,0 +1,6 @@
+google-adk[a2a]
+google-genai
+vertexai
+python-dotenv
+uvicorn
+fastapi

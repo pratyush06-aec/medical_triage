@@ -1,0 +1,171 @@
+# 🏥 Medical Appointment & Symptom Triage Assistant
+
+**Triage & clinic-directory multi-agent demo** — a small local-agent system that classifies symptoms, consults a clinic directory agent (A2A), and can book appointments (in-memory).
+*Built as a capstone / demo project using Google ADK + Gemini model (local debug flow).*
+
+---
+
+## 1. One-line summary
+
+A small multi-agent demo that: (1) classifies user symptoms to a probable specialty and urgency, (2) contacts a **clinic directory** agent (A2A) to find clinics / doctors / availability, and (3) can book an appointment in-memory — all via a CLI and a local FastAPI agent server.
+**Good for:** prototyping agent-to-agent flows, testing function-calling/tool patterns, and learning the ADK A2A model.
+
+`#Agents #TriageBot #A2A #GenAI #Capstone` 🚀
+
+---
+
+## 2. Project structure (important files / folders)
+
+```
+.
+├─ clinic_agent/                # Clinic directory A2A agent (FastAPI via to_a2a)
+│  ├─ clinic_server.py          # exposes get_clinic_info, get_doctors, get_doctor_availability
+│  └─ __init__.py
+├─ triage_agent/                # Orchestrator agent
+│  └─ agent.py                  # orchestrator agent + classify_symptoms + book_appointment + RemoteA2aAgent
+├─ medical_capestone/           # CLI entrypoint & helpers
+│  ├─ main.py                   # CLI REPL (chat loop) for triage orchestrator
+│  └─ (other runner/test files)
+├─ tests/
+│  └─ test_schedule_tools.py    # unit tests for clinic helpers
+├─ .env                         # env vars (GOOGLE_API_KEY etc) — **local only**
+├─ requirements.txt
+├─ check_env.py                 # small utility to print .env values (debug)
+└─ README.md                    # ← you are reading it
+```
+
+---
+
+## 3. Problem statement — what we’re solving (and why)
+
+Many symptom-to-appointment systems require coordinating multiple systems:
+
+* **Triage:** interpret free-text symptoms into a probable specialty and urgency.
+* **Directory lookup:** find clinics and doctors (and their availability) in a given area.
+* **Booking orchestration:** coordinate checks and then write a booking.
+
+This project demonstrates how **multiple specialized agents** (a triage orchestrator and a clinic-directory agent) can coordinate through A2A to answer user questions and make bookings — a pattern useful for modular, maintainable AI systems.
+
+---
+
+## 4. Why agents? (why this approach)
+
+* **Separation of concerns:** triage logic vs clinic data vs booking logic live in separate components.
+* **Extensibility:** swap the clinic agent for a real service (or add more agents) without changing the orchestrator.
+* **Tooling & function-calling:** shows how LLMs can call well-defined functions/tools rather than hallucinate free text.
+* **A2A (Agent-to-agent) demo:** demonstrates using an A2A protocol to expose agent capabilities (agent-card) and call them programmatically.
+
+---
+
+## 5. What I created — architecture & flow
+
+```
+[User CLI]  -> (text) -> [triage_orchestrator agent (LlmAgent)]
+                                   |
+                      transfer_to_agent (function call)
+                                   |
+                         [clinic_directory_agent (A2A)]
+                                   |
+                         (get_doctors / availability)
+                                   |
+                         return structured JSON
+                                   |
+                    orchestrator formats reply & may call
+                    local book_appointment tool (in-memory)
+```
+
+* **triage_orchestrator** — LlmAgent using Gemini model; tools: `classify_symptoms`, `book_appointment`. Uses `transfer_to_agent` pattern to call remote A2A agent.
+* **clinic_directory_agent** — LlmAgent exposed as a FastAPI A2A app via `to_a2a(...)`. Tools: `get_clinic_info`, `get_doctors`, `get_doctor_availability`. For demo, it uses a local in-file dataset (`_DOCTORS`, `_CLINICS`).
+
+---
+
+## 6. Demo — run & interact (local)
+
+Follow exactly in a terminal (Windows PowerShell commands shown, adapt for bash):
+
+**1) Clone the repo**
+
+```bash
+git clone https://github.com/pratyush06-aec/kaggle_capestone_project.git
+cd kaggle_capestone_project
+```
+
+**2) Create & activate a virtualenv (Windows PowerShell)**
+
+```powershell
+python -m venv .venv
+# activate
+.venv\Scripts\Activate.ps1
+# (if you get execution policy issues use: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass)
+```
+
+**macOS / Linux**
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+**3) Install deps**
+
+```bash
+pip install -r requirements.txt
+```
+
+**4) Create `.env`** file (project root) with your API key or usage flags:
+
+```
+GOOGLE_API_KEY=YOUR_KEY_HERE
+# If you want the ADK to use Vertex AI instead, set GOOGLE_GENAI_USE_VERTEXAI=1 and configure cloud credentials
+GOOGLE_GENAI_USE_VERTEXAI=0
+```
+
+**5) Start the clinic directory A2A agent (in a separate terminal)**
+
+```powershell
+uvicorn clinic_agent.clinic_server:app --host 127.0.0.1 --port 8001 --reload
+```
+
+You should be able to open `http://127.0.0.1:8001/.well-known/agent-card.json` and see the agent card.
+
+**6) Run the triage CLI (another terminal)**
+
+```powershell
+python -m medical_capestone.main
+```
+
+You’ll get a prompt:
+
+```
+==============================
+  🏥 MEDICAL TRIAGE ASSISTANT
+==============================
+You >
+```
+
+Try messages like:
+
+* `I have a fever and cough`
+* `Yes` (to book)
+* `Location: Dankuni, date: Wednesday, time: 4pm`
+
+The orchestrator will use `classify_symptoms`, transfer queries to the clinic agent as needed, and can call `book_appointment` locally.
+
+---
+
+## 9. Tests
+
+A minimal `tests/test_schedule_tools.py` is included. Run:
+
+```bash
+pytest -q
+---
+
+## 10. How it was built (tools / tech)
+
+* Python 3.11+ (tested with 3.13 in dev screenshots)
+* Google ADK (ADK `LlmAgent`, `RemoteA2aAgent`, A2A helpers)
+* `dotenv` to manage local env
+* `uvicorn` + FastAPI (via ADK `to_a2a`) to expose A2A endpoints
+* Local in-memory datasets (for doctors/clinics) and in-memory bookings dict
+* Gemini family model configured (`gemini-2.5-flash-lite`) — can be configured to use API key or VertexAI depending on `.env`.
