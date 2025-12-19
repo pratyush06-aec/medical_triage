@@ -4,3 +4,4 @@ vertexai
 python-dotenv
 uvicorn
 fastapi
+pydantic

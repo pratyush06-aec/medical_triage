@@ -3,10 +3,18 @@ from pydantic import BaseModel
 import re
 from services.booking_service import book_appointment
 
+# =================================================
+# ✅ NEW: Emergency support imports (ADDED)
+# =================================================
+from utils.emergency_support import (
+    detect_emergency_level,
+    format_sos_message,
+    format_home_care
+)
+
 router = APIRouter()
 
 booking_context = {}
-
 
 class ChatRequest(BaseModel):
     message: str
@@ -18,17 +26,65 @@ def interact(req: ChatRequest, request: Request):
     msg = req.message.lower().strip()
     msg = re.sub(r"[.,]", "", msg)
 
+    # =================================================
+    # ❌ OLD CONTEXT INITIALIZATION (COMMENTED — DO NOT DELETE)
+    # =================================================
+    # if user_id not in booking_context:
+    #     booking_context[user_id] = {
+    #         "patient_name": None,
+    #         "doctor": None,
+    #         "time": None,
+    #         "awaiting": None
+    #     }
+
+    # =================================================
+    # ✅ NEW: CONTEXT WITH EMERGENCY FIELDS (MODIFIED)
+    # =================================================
     if user_id not in booking_context:
         booking_context[user_id] = {
             "patient_name": None,
             "doctor": None,
             "time": None,
-            "awaiting": None
+            "awaiting": None,
+            "emergency_checked": False,   # NEW
+            "emergency_level": None       # NEW
         }
 
     ctx = booking_context[user_id]
 
-    # -------- EXTRACTION --------
+    # =================================================
+    # ✅ NEW: TRIAGE LOGIC (ADDED)
+    # Runs ONCE per conversation session
+    # =================================================
+    if not ctx["emergency_checked"]:
+        level = detect_emergency_level(msg)
+        ctx["emergency_level"] = level
+        ctx["emergency_checked"] = True
+
+        # 🚨 HIGH EMERGENCY → SOS RESPONSE → STOP FLOW
+        if level == "HIGH":
+            return {"reply": format_sos_message()}
+
+        # 🩺 MODERATE / LOW → HOME CARE + ASK BOOKING CONSENT
+        reply = format_home_care()
+        reply += "\n\nWould you like to book an appointment? (yes/no)"
+        ctx["awaiting"] = "booking_consent"
+        return {"reply": reply}
+
+    # =================================================
+    # ✅ NEW: BOOKING CONSENT HANDLER (ADDED)
+    # =================================================
+    if ctx.get("awaiting") == "booking_consent":
+        if msg in ["yes", "y"]:
+            ctx["awaiting"] = None
+            return {"reply": "Sure. Which doctor would you like to book?"}
+        else:
+            booking_context.pop(user_id, None)
+            return {"reply": "Okay. Take care and monitor your symptoms."}
+
+    # =================================================
+    # -------- EXTRACTION (UNCHANGED LOGIC) --------
+    # =================================================
 
     if not ctx["patient_name"]:
         name_match = re.search(
@@ -41,7 +97,6 @@ def interact(req: ChatRequest, request: Request):
             name_match = re.fullmatch(r"[a-zA-Z]{2,}", msg)
 
         if name_match:
-            # ✅ FIX: group(1) for search, group(0) for fullmatch
             ctx["patient_name"] = (
                 name_match.group(1)
                 if name_match.lastindex
@@ -61,7 +116,9 @@ def interact(req: ChatRequest, request: Request):
             minute = time_match.group(2) or "00"
             ctx["time"] = f"{hour}:{minute}"
 
-    # -------- DECISION --------
+    # =================================================
+    # -------- DECISION (UNCHANGED LOGIC) --------
+    # =================================================
 
     if not ctx["doctor"]:
         ctx["awaiting"] = "doctor"
@@ -75,7 +132,9 @@ def interact(req: ChatRequest, request: Request):
         ctx["awaiting"] = "name"
         return {"reply": "Please tell me your name."}
 
-    # -------- BOOKING --------
+    # =================================================
+    # -------- BOOKING (UNCHANGED LOGIC) --------
+    # =================================================
 
     data = {
         "patient_name": ctx["patient_name"],
