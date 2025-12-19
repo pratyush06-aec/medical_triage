@@ -1,9 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 import re
 from services.booking_service import book_appointment
 
 router = APIRouter()
+
+booking_context = {}
 
 
 class ChatRequest(BaseModel):
@@ -11,32 +13,79 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/interact")
-def interact(req: ChatRequest):
-    msg = req.message.lower()
+def interact(req: ChatRequest, request: Request):
+    user_id = request.client.host
+    msg = req.message.lower().strip()
+    msg = re.sub(r"[.,]", "", msg)
 
-    # 🔍 very basic intent detection
-    if "book" in msg and "dr" in msg:
-        # VERY simple extraction (temporary)
-        name_match = re.search(r"my name is (\w+)", msg)
-        doctor_match = re.search(r"dr\s+(\w+)", msg)
-        time_match = re.search(r"(\d{1,2}:\d{2})", msg)
-
-        if not (name_match and doctor_match and time_match):
-            return {
-                "reply": "I need your name, doctor, and time to book the appointment."
-            }
-
-        data = {
-            "patient_name": name_match.group(1).capitalize(),
-            "doctor": f"Dr {doctor_match.group(1).capitalize()}",
-            "date": "2025-01-15",   # temporary default
-            "time": time_match.group(1)
+    if user_id not in booking_context:
+        booking_context[user_id] = {
+            "patient_name": None,
+            "doctor": None,
+            "time": None,
+            "awaiting": None
         }
 
-        success, message = book_appointment(data)
-        return {"reply": message}
+    ctx = booking_context[user_id]
 
-    # fallback (non-booking chat)
-    return {
-        "reply": "I can help you book appointments. Try saying: Book Dr Sharma tomorrow at 10:30."
+    # -------- EXTRACTION --------
+
+    if not ctx["patient_name"]:
+        name_match = re.search(
+            r"(?:my name is|name is)\s+([a-zA-Z]{2,})",
+            msg
+        )
+
+        # allow plain name ONLY when awaiting name
+        if not name_match and ctx.get("awaiting") == "name":
+            name_match = re.fullmatch(r"[a-zA-Z]{2,}", msg)
+
+        if name_match:
+            # ✅ FIX: group(1) for search, group(0) for fullmatch
+            ctx["patient_name"] = (
+                name_match.group(1)
+                if name_match.lastindex
+                else name_match.group(0)
+            ).capitalize()
+            ctx["awaiting"] = None
+
+    if not ctx["doctor"]:
+        doctor_match = re.search(r"dr\s+([a-zA-Z]+)", msg)
+        if doctor_match:
+            ctx["doctor"] = f"Dr {doctor_match.group(1).capitalize()}"
+
+    if not ctx["time"]:
+        time_match = re.search(r"\b(\d{1,2})(?::|\.)?(\d{2})?\b", msg)
+        if time_match:
+            hour = time_match.group(1)
+            minute = time_match.group(2) or "00"
+            ctx["time"] = f"{hour}:{minute}"
+
+    # -------- DECISION --------
+
+    if not ctx["doctor"]:
+        ctx["awaiting"] = "doctor"
+        return {"reply": "Which doctor would you like to book?"}
+
+    if not ctx["time"]:
+        ctx["awaiting"] = "time"
+        return {"reply": "Please tell me the appointment time."}
+
+    if not ctx["patient_name"]:
+        ctx["awaiting"] = "name"
+        return {"reply": "Please tell me your name."}
+
+    # -------- BOOKING --------
+
+    data = {
+        "patient_name": ctx["patient_name"],
+        "doctor": ctx["doctor"],
+        "date": "2025-01-15",  # temporary
+        "time": ctx["time"]
     }
+
+    success, message = book_appointment(data)
+
+    booking_context.pop(user_id, None)
+
+    return {"reply": message}
