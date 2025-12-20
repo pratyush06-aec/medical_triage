@@ -5,6 +5,9 @@
 
 from collections import defaultdict
 from database.db import get_doctors_by_area_and_specialty
+from database.db import is_slot_booked
+
+STATIC_DATE = "2025-01-15"  # temporary until date picker is added
 
 # =================================================
 # ❌ OLD: INLINE GROUPING + FORMATTING LOGIC
@@ -42,10 +45,12 @@ from database.db import get_doctors_by_area_and_specialty
 
 # =================================================
 # ✅ NEW: GROUP DB ROWS INTO STRUCTURED DOCTOR OBJECTS
+# WITH SLOT LOCKING (MODIFIED)
 # =================================================
 def group_doctors_with_schedule(rows):
     """
     Converts flat DB rows into structured doctor objects.
+    Filters out already-booked slots.
 
     Input row format:
     (doctor_id, name, specialty, day, time)
@@ -62,9 +67,23 @@ def group_doctors_with_schedule(rows):
                 "schedule": defaultdict(list)
             }
 
-        doctors[doctor_id]["schedule"][day].append(time)
+        # =================================================
+        # ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
+        # doctors[doctor_id]["schedule"][day].append(time)
+        # =================================================
 
-    # Convert defaultdict → normal dict for clean output
+        # =================================================
+        # ✅ NEW LOGIC: SLOT LOCKING CHECK
+        # Only add slot if NOT already booked
+        # =================================================
+        if not is_slot_booked(
+            doctor=name,
+            date=STATIC_DATE,
+            time=time
+        ):
+            doctors[doctor_id]["schedule"][day].append(time)
+
+    # Convert defaultdict → normal dict
     for doctor in doctors.values():
         doctor["schedule"] = dict(doctor["schedule"])
 
