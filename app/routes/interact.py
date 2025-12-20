@@ -1,169 +1,7 @@
-# from fastapi import APIRouter, Request
-# from pydantic import BaseModel
-# import re
-# from services.booking_service import book_appointment
-
-# # =================================================
-# # ✅ NEW: Emergency support imports (ADDED)
-# # =================================================
-# from utils.emergency_support import (
-#     detect_emergency_level,
-#     format_sos_message,
-#     format_home_care
-# )
-
-# router = APIRouter()
-
-# booking_context = {}
-
-# class ChatRequest(BaseModel):
-#     message: str
-
-
-# @router.post("/interact")
-# def interact(req: ChatRequest, request: Request):
-#     user_id = request.client.host
-#     msg = req.message.lower().strip()
-#     msg = re.sub(r"[.,]", "", msg)
-
-#     # =================================================
-#     # ❌ OLD CONTEXT INITIALIZATION (COMMENTED — DO NOT DELETE)
-#     # =================================================
-#     # if user_id not in booking_context:
-#     #     booking_context[user_id] = {
-#     #         "patient_name": None,
-#     #         "doctor": None,
-#     #         "time": None,
-#     #         "awaiting": None
-#     #     }
-
-#     # =================================================
-#     # ✅ NEW: CONTEXT WITH EMERGENCY FIELDS (MODIFIED)
-#     # =================================================
-#     if user_id not in booking_context:
-#         booking_context[user_id] = {
-#             "patient_name": None,
-#             "doctor": None,
-#             "time": None,
-#             "awaiting": None,
-#             "emergency_checked": False,   # NEW
-#             "emergency_level": None       # NEW
-#         }
-
-#     ctx = booking_context[user_id]
-
-#     # =================================================
-#     # ✅ NEW: TRIAGE LOGIC (ADDED)
-#     # Runs ONCE per conversation session
-#     # =================================================
-#     if not ctx["emergency_checked"]:
-#         level = detect_emergency_level(msg)
-#         ctx["emergency_level"] = level
-#         ctx["emergency_checked"] = True
-
-#         # 🚨 HIGH EMERGENCY → SOS RESPONSE → STOP FLOW
-#         if level == "HIGH":
-#             return {"reply": format_sos_message()}
-
-#         # 🩺 MODERATE / LOW → HOME CARE + ASK BOOKING CONSENT
-#         reply = format_home_care()
-#         reply += "\n\nWould you like to book an appointment? (yes/no)"
-#         ctx["awaiting"] = "booking_consent"
-#         return {"reply": reply}
-
-#     # =================================================
-#     # ✅ NEW: BOOKING CONSENT HANDLER (ADDED)
-#     # =================================================
-#     if ctx.get("awaiting") == "booking_consent":
-#         if msg in ["yes", "y"]:
-#             ctx["awaiting"] = None
-#             return {"reply": "Sure. Which doctor would you like to book?"}
-#         else:
-#             booking_context.pop(user_id, None)
-#             return {"reply": "Okay. Take care and monitor your symptoms."}
-
-    # # =================================================
-    # # -------- EXTRACTION (UNCHANGED LOGIC) --------
-    # # =================================================
-
-    # if not ctx["patient_name"]:
-    #     name_match = re.search(
-    #         r"(?:my name is|name is)\s+([a-zA-Z]{2,})",
-    #         msg
-    #     )
-
-    #     # allow plain name ONLY when awaiting name
-    #     if not name_match and ctx.get("awaiting") == "name":
-    #         name_match = re.fullmatch(r"[a-zA-Z]{2,}", msg)
-
-    #     if name_match:
-    #         ctx["patient_name"] = (
-    #             name_match.group(1)
-    #             if name_match.lastindex
-    #             else name_match.group(0)
-    #         ).capitalize()
-    #         ctx["awaiting"] = None
-
-    # if not ctx["doctor"]:
-    #     doctor_match = re.search(r"dr\s+([a-zA-Z]+)", msg)
-    #     if doctor_match:
-    #         ctx["doctor"] = f"Dr {doctor_match.group(1).capitalize()}"
-
-    # if not ctx["time"]:
-    #     time_match = re.search(r"\b(\d{1,2})(?::|\.)?(\d{2})?\b", msg)
-    #     if time_match:
-    #         hour = time_match.group(1)
-    #         minute = time_match.group(2) or "00"
-    #         ctx["time"] = f"{hour}:{minute}"
-
-    # # =================================================
-    # # -------- DECISION (UNCHANGED LOGIC) --------
-    # # =================================================
-
-    # if not ctx["doctor"]:
-    #     ctx["awaiting"] = "doctor"
-    #     return {"reply": "Which doctor would you like to book?"}
-
-    # if not ctx["time"]:
-    #     ctx["awaiting"] = "time"
-    #     return {"reply": "Please tell me the appointment time."}
-
-    # if not ctx["patient_name"]:
-    #     ctx["awaiting"] = "name"
-    #     return {"reply": "Please tell me your name."}
-
-    # # =================================================
-    # # -------- BOOKING (UNCHANGED LOGIC) --------
-    # # =================================================
-
-    # data = {
-    #     "patient_name": ctx["patient_name"],
-    #     "doctor": ctx["doctor"],
-    #     "date": "2025-01-15",  # temporary
-    #     "time": ctx["time"]
-    # }
-
-    # success, message = book_appointment(data)
-
-    # booking_context.pop(user_id, None)
-
-    # return {"reply": message}
-
-
-
-
-
-
-
-
-
-
-
-
-
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 import re
+
 from services.booking_service import book_appointment
 
 # =================================================
@@ -171,13 +9,21 @@ from services.booking_service import book_appointment
 # =================================================
 from utils.emergency_support import (
     detect_emergency_level,
-    infer_specialty_from_symptoms,   # ✅ NEW
+    infer_specialty_from_symptoms,
     format_sos_message,
     format_home_care
 )
 
+# =================================================
+# ✅ NEW IMPORTS FOR STEP 3 (ADDED)
+# =================================================
+from services.catalog_service import get_doctor_catalog
+from database.db import get_doctors_by_area_and_specialty
+from services.catalog_service import group_doctors_with_schedule
+
 router = APIRouter()
 booking_context = {}
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -201,17 +47,18 @@ def interact(req: ChatRequest, request: Request):
     #     }
 
     # =================================================
-    # ✅ NEW CONTEXT WITH TRIAGE + SPECIALTY + AREA
-    # (MODIFIED / EXTENDED)
+    # ✅ NEW CONTEXT WITH TRIAGE + CATALOG STATE
     # =================================================
     if user_id not in booking_context:
         booking_context[user_id] = {
             "patient_name": None,
             "doctor": None,
             "time": None,
+            "day": None,
             "awaiting": None,
+            "available_doctors": None,
 
-            # -------- NEW FIELDS (ADDED) --------
+            # ---- TRIAGE ----
             "emergency_checked": False,
             "emergency_level": None,
             "specialty": None,
@@ -222,45 +69,50 @@ def interact(req: ChatRequest, request: Request):
     ctx = booking_context[user_id]
 
     # =================================================
-    # ✅ TRIAGE LOGIC (MODIFIED)
-    # - Stores symptom text
-    # - Separates severity and specialty
+    # ✅ TRIAGE LOGIC (UNCHANGED, CORRECT)
     # =================================================
     if not ctx["emergency_checked"]:
-        ctx["symptom_text"] = msg                     # ✅ NEW
+        ctx["symptom_text"] = msg
         ctx["emergency_level"] = detect_emergency_level(msg)
-        ctx["specialty"] = infer_specialty_from_symptoms(msg)  # ✅ NEW
+        ctx["specialty"] = infer_specialty_from_symptoms(msg)
         ctx["emergency_checked"] = True
 
-        # 🚨 HIGH EMERGENCY → SOS ONLY
         if ctx["emergency_level"] == "HIGH":
             return {"reply": format_sos_message()}
 
-        # 🩺 MODERATE / LOW → HOME CARE + BOOKING CONSENT
         reply = format_home_care()
         reply += "\n\nWould you like to book an appointment? (yes/no)"
         ctx["awaiting"] = "booking_consent"
         return {"reply": reply}
 
     # =================================================
-    # ✅ BOOKING CONSENT HANDLER (MODIFIED)
+    # ✅ BOOKING CONSENT
     # =================================================
-    if ctx.get("awaiting") == "booking_consent":
+    if ctx["awaiting"] == "booking_consent":
         if msg in ["yes", "y"]:
-            ctx["awaiting"] = "area"       # ✅ NEW STATE
+            ctx["awaiting"] = "area"
             return {"reply": "Please tell me your area of residence."}
         else:
             booking_context.pop(user_id, None)
             return {"reply": "Okay. Take care and monitor your symptoms."}
 
     # =================================================
-    # ✅ HANDLE AREA INPUT + SHOW CATALOG (ADDED)
+    # ✅ AREA → SHOW CATALOG (STEP 3 ENTRY POINT)
     # =================================================
-    if ctx.get("awaiting") == "area":
+    if ctx["awaiting"] == "area":
         ctx["area"] = msg.lower()
-        ctx["awaiting"] = None
 
-        from services.catalog_service import get_doctor_catalog
+        rows = get_doctors_by_area_and_specialty(
+            ctx["area"], ctx["specialty"]
+        )
+
+        if not rows:
+            return {
+                "reply": f"No doctors found in {ctx['area']} for your concern."
+            }
+
+        ctx["available_doctors"] = group_doctors_with_schedule(rows)
+        ctx["awaiting"] = "doctor_selection"
 
         return {
             "reply": get_doctor_catalog(
@@ -270,64 +122,74 @@ def interact(req: ChatRequest, request: Request):
         }
 
     # =================================================
-    # -------- EXTRACTION (UNCHANGED LOGIC) --------
+    # ✅ DOCTOR SELECTION (BY NUMBER)
     # =================================================
-    if not ctx["patient_name"]:
-        name_match = re.search(
-            r"(?:my name is|name is)\s+([a-zA-Z]{2,})",
-            msg
-        )
+    if ctx["awaiting"] == "doctor_selection":
+        try:
+            index = int(msg) - 1
+            ctx["doctor"] = ctx["available_doctors"][index]
+        except (ValueError, IndexError):
+            return {"reply": "Please choose a valid doctor number."}
 
-        if not name_match and ctx.get("awaiting") == "name":
-            name_match = re.fullmatch(r"[a-zA-Z]{2,}", msg)
+        ctx["awaiting"] = "day_selection"
+        days = ", ".join(ctx["doctor"]["schedule"].keys())
 
-        if name_match:
-            ctx["patient_name"] = (
-                name_match.group(1)
-                if name_match.lastindex
-                else name_match.group(0)
-            ).capitalize()
-            ctx["awaiting"] = None
-
-    if not ctx["doctor"]:
-        doctor_match = re.search(r"dr\s+([a-zA-Z]+)", msg)
-        if doctor_match:
-            ctx["doctor"] = f"Dr {doctor_match.group(1).capitalize()}"
-
-    if not ctx["time"]:
-        time_match = re.search(r"\b(\d{1,2})(?::|\.)?(\d{2})?\b", msg)
-        if time_match:
-            hour = time_match.group(1)
-            minute = time_match.group(2) or "00"
-            ctx["time"] = f"{hour}:{minute}"
+        return {
+            "reply": (
+                f"You selected {ctx['doctor']['name']}.\n"
+                f"Available days: {days}\n"
+                "Please choose a day."
+            )
+        }
 
     # =================================================
-    # -------- DECISION (UNCHANGED LOGIC) --------
+    # ✅ DAY SELECTION
     # =================================================
-    if not ctx["doctor"]:
-        ctx["awaiting"] = "doctor"
-        return {"reply": "Which doctor would you like to book?"}
+    if ctx["awaiting"] == "day_selection":
+        day = msg.title()
 
-    if not ctx["time"]:
-        ctx["awaiting"] = "time"
-        return {"reply": "Please tell me the appointment time."}
+        if day not in ctx["doctor"]["schedule"]:
+            return {"reply": "Please choose a valid available day."}
 
-    if not ctx["patient_name"]:
+        ctx["day"] = day
+        ctx["awaiting"] = "time_selection"
+
+        slots = ", ".join(ctx["doctor"]["schedule"][day])
+        return {
+            "reply": f"Available time slots on {day}: {slots}\nChoose a time."
+        }
+
+    # =================================================
+    # ✅ TIME SLOT SELECTION
+    # =================================================
+    if ctx["awaiting"] == "time_selection":
+        if msg not in ctx["doctor"]["schedule"][ctx["day"]]:
+            return {"reply": "Please choose a valid time slot."}
+
+        ctx["time"] = msg
         ctx["awaiting"] = "name"
-        return {"reply": "Please tell me your name."}
+        return {"reply": "Please tell me the patient name."}
 
     # =================================================
-    # -------- BOOKING (UNCHANGED LOGIC) --------
+    # ❌ OLD REGEX-BASED EXTRACTION (COMMENTED — DO NOT DELETE)
+    # (Replaced by structured selection flow)
     # =================================================
-    data = {
-        "patient_name": ctx["patient_name"],
-        "doctor": ctx["doctor"],
-        "date": "2025-01-15",  # temporary
-        "time": ctx["time"]
-    }
+    # doctor_match = re.search(r"dr\s+([a-zA-Z]+)", msg)
+    # time_match = re.search(r"\b(\d{1,2})(?::|\.)?(\d{2})?\b", msg)
 
-    success, message = book_appointment(data)
+    # =================================================
+    # ✅ PATIENT NAME
+    # =================================================
+    if ctx["awaiting"] == "name":
+        ctx["patient_name"] = msg.capitalize()
 
-    booking_context.pop(user_id, None)
+        data = {
+            "patient_name": ctx["patient_name"],
+            "doctor": ctx["doctor"]["name"],
+            "date": "2025-01-15",  # temporary
+            "time": ctx["time"]
+        }
 
-    return {"reply": message}
+        success, message = book_appointment(data)
+        booking_context.pop(user_id, None)
+        return {"reply": message}
