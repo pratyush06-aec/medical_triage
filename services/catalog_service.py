@@ -1,61 +1,178 @@
-# =================================================
-# CATALOG SERVICE
-# Responsible ONLY for formatting and structuring data
-# =================================================
+# from collections import defaultdict
+# from database.db import get_doctors_by_area_and_specialty
+# from database.db import specialty_exists_in_area
+# # ✅ MODIFICATION: Import specialty inference function
+# from utils.emergency_support import infer_specialty_from_symptoms
+
+
+# # =================================================
+# # ❌ OLD DATE-BASED LOGIC (COMMENTED — DO NOT DELETE)
+# # =================================================
+# # STATIC_DATE = "2025-01-15"
+
+# # =================================================
+# # ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
+# # doctors[doctor_id]["schedule"][day].append(time)
+# # =================================================
+
+
+# # =================================================
+# # ✅ GROUP DB ROWS INTO STRUCTURED DOCTOR OBJECTS
+# # (UNCHANGED – DATE AGNOSTIC)
+# # =================================================
+# def group_doctors_with_schedule(rows):
+#     doctors = {}
+#     for doctor_id, name, specialty, day, time in rows:
+#         if doctor_id not in doctors:
+#             doctors[doctor_id] = {
+#                 "doctor_id": doctor_id,
+#                 "name": name,
+#                 "specialty": specialty,
+#                 "schedule": defaultdict(list)
+#             }
+
+#         # =================================================
+#         # ❌ OLD SLOT CHECK (COMMENTED — DO NOT DELETE)
+#         # =================================================
+#         # if not is_slot_booked(doctor=name, date=STATIC_DATE, time=time):
+#         #     doctors[doctor_id]["schedule"][day].append(time)
+
+#         # =================================================
+#         # ✅ MODIFICATION: ALWAYS SHOW SLOTS
+#         # =================================================
+#         doctors[doctor_id]["schedule"][day].append(time)
+
+#     for doctor in doctors.values():
+#         doctor["schedule"] = dict(doctor["schedule"])
+
+#     return [d for d in doctors.values() if d["schedule"]]
+
+
+# # =================================================
+# # ✅ FORMAT DOCTOR CATALOG (UNCHANGED)
+# # =================================================
+# def format_doctor_catalog(doctors):
+#     lines = []
+#     for idx, doctor in enumerate(doctors, start=1):
+#         schedule_lines = []
+#         for day, slots in doctor["schedule"].items():
+#             schedule_lines.append(f"     - {day}: {', '.join(slots)}")
+#         lines.append(
+#             f"{idx}. {doctor['name']} "
+#             f"({doctor['specialty'].replace('_', ' ').title()})\n"
+#             f"   Availability:\n" +
+#             "\n".join(schedule_lines)
+#         )
+#     return "\n\n".join(lines)
+
+
+# # =================================================
+# # ✅ MODIFICATION: USER INTERACTION ENTRY POINT
+# # THIS IS WHERE inferred_specialty MUST BE PRINTED
+# # =================================================
+# def handle_user_input(user_input: str, area: str) -> str:
+#     """
+#     Entry point for user interaction.
+#     MODIFICATION:
+#     - Added debug print for inferred_specialty
+#     """
+
+#     # =================================================
+#     # MODIFICATION: SPECIALTY INFERENCE
+#     # =================================================
+#     inferred_specialty = infer_specialty_from_symptoms(user_input)
+
+#     # 🔴 DEBUG LINE (AS REQUESTED)
+#     print("DEBUG → inferred_specialty:", inferred_specialty)
+
+#     # Safety normalization
+#     inferred_specialty = inferred_specialty.strip().lower()
+#     area = area.strip().lower()
+
+#     return get_doctor_catalog(area, inferred_specialty)
+
+
+# # =================================================
+# # ✅ PUBLIC SERVICE FUNCTION (UNCHANGED LOGIC)
+# # =================================================
+# def get_doctor_catalog(area: str, specialty: str) -> str:
+#     area = area.strip().lower()
+#     specialty = specialty.strip().lower()
+
+#     # =================================================
+#     # STEP 1: SPECIALIST EXISTENCE CHECK
+#     # =================================================
+#     if not specialty_exists_in_area(area, specialty):
+#         return (
+#             f"❌ No {specialty.replace('_', ' ').title()} "
+#             f"found in {area.title()}.\n\n"
+#             "You may consult a General Physician for initial evaluation."
+#         )
+
+#     # =================================================
+#     # STEP 2: SHOW SPECIALIST (ALWAYS)
+#     # =================================================
+#     rows = get_doctors_by_area_and_specialty(area, specialty)
+#     doctors = group_doctors_with_schedule(rows)
+
+#     if doctors:
+#         return (
+#             "🩺 **Available Doctors:**\n\n"
+#             f"{format_doctor_catalog(doctors)}\n\n"
+#             "Please choose a doctor by number."
+#         )
+
+#     return (
+#         f"⚠️ A {specialty.replace('_', ' ').title()} "
+#         f"is present in your area, but no schedule is currently available."
+#     )
+
+
+# # =================================================
+# # ❌ OLD FALLBACK MAP (COMMENTED — DO NOT DELETE)
+# # =================================================
+# # fallback_map = {
+# #     "cardiology": "general_physician",
+# #     "neurology": "general_physician",
+# #     "gastroenterology": "general_physician"
+# # }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 from collections import defaultdict
 from database.db import get_doctors_by_area_and_specialty
-from database.db import is_slot_booked
+from database.db import specialty_exists_in_area
 
-STATIC_DATE = "2025-01-15"  # temporary until date picker is added
-
-# =================================================
-# ❌ OLD: INLINE GROUPING + FORMATTING LOGIC
-# COMMENTED — DO NOT DELETE
-# (This version grouped rows and formatted output here,
-# which mixed responsibilities and duplicated logic)
-# =================================================
-# def get_doctor_catalog(area: str, specialty: str) -> str:
-#     rows = get_doctors_by_area_and_specialty(area, specialty)
-#     if not rows:
-#         return "No doctors found in your area."
-#
-#     doctors = defaultdict(lambda: defaultdict(list))
-#     for doctor_id, name, specialty, day, time in rows:
-#         doctors[name]["specialty"] = specialty
-#         doctors[name][day].append(time)
-#
-#     msg = "🩺 **Available Doctors:**\n\n"
-#     for name, info in doctors.items():
-#         msg += f"- {name} ({info['specialty'].replace('_',' ').title()})\n"
-#         for day, slots in info.items():
-#             if day == "specialty":
-#                 continue
-#             msg += f"   {day.title()}: {', '.join(slots)}\n"
-#         msg += "\n"
-#
-#     msg += "Please tell me the doctor name, day, and time."
-#     return msg
+# ✅ MODIFICATION: Import specialty inference function (USED BY handle_user_input)
+from utils.emergency_support import infer_specialty_from_symptoms
 
 # =================================================
-# ❌ OLD: SIMPLE CATALOG FORMATTER (COMMENTED — DO NOT DELETE)
+# ❌ OLD DATE-BASED LOGIC (COMMENTED — DO NOT DELETE)
 # =================================================
-# def format_doctor_catalog(doctors):
-#     return "\n".join([doc["name"] for doc in doctors])
+# STATIC_DATE = "2025-01-15"
 
 # =================================================
-# ✅ NEW: GROUP DB ROWS INTO STRUCTURED DOCTOR OBJECTS
-# WITH SLOT LOCKING (MODIFIED)
+# ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
+# doctors[doctor_id]["schedule"][day].append(time)
+# =================================================
+
+
+# =================================================
+# ✅ GROUP DB ROWS INTO STRUCTURED DOCTOR OBJECTS
+# (UNCHANGED – DATE AGNOSTIC)
 # =================================================
 def group_doctors_with_schedule(rows):
-    """
-    Converts flat DB rows into structured doctor objects.
-    Filters out already-booked slots.
-
-    Input row format:
-    (doctor_id, name, specialty, day, time)
-    """
-
     doctors = {}
 
     for doctor_id, name, specialty, day, time in rows:
@@ -68,86 +185,135 @@ def group_doctors_with_schedule(rows):
             }
 
         # =================================================
-        # ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
-        # doctors[doctor_id]["schedule"][day].append(time)
+        # ❌ OLD SLOT CHECK (COMMENTED — DO NOT DELETE)
         # =================================================
+        # if not is_slot_booked(doctor=name, date=STATIC_DATE, time=time):
+        #     doctors[doctor_id]["schedule"][day].append(time)
 
         # =================================================
-        # ✅ NEW LOGIC: SLOT LOCKING CHECK
-        # Only add slot if NOT already booked
+        # ✅ MODIFICATION: ALWAYS SHOW SLOTS
+        # (Booking conflicts handled at booking time)
         # =================================================
-        if not is_slot_booked(
-            doctor=name,
-            date=STATIC_DATE,
-            time=time
-        ):
-            doctors[doctor_id]["schedule"][day].append(time)
+        doctors[doctor_id]["schedule"][day].append(time)
 
-    # Convert defaultdict → normal dict
+    # Convert defaultdict → dict
     for doctor in doctors.values():
         doctor["schedule"] = dict(doctor["schedule"])
 
-    return list(doctors.values())
+    return [d for d in doctors.values() if d["schedule"]]
+
 
 # =================================================
-# ✅ NEW: FORMAT STRUCTURED DOCTOR CATALOG FOR DISPLAY
+# ✅ FORMAT DOCTOR CATALOG (UNCHANGED)
 # =================================================
 def format_doctor_catalog(doctors):
-    """
-    Formats doctor catalog with availability for user display.
-    """
-
     lines = []
 
     for idx, doctor in enumerate(doctors, start=1):
         schedule_lines = []
-
         for day, slots in doctor["schedule"].items():
             schedule_lines.append(
                 f"     - {day}: {', '.join(slots)}"
             )
 
-        schedule_text = "\n".join(schedule_lines)
-
         lines.append(
             f"{idx}. {doctor['name']} "
             f"({doctor['specialty'].replace('_', ' ').title()})\n"
-            f"   Availability:\n{schedule_text}"
+            f"   Availability:\n" +
+            "\n".join(schedule_lines)
         )
 
     return "\n\n".join(lines)
 
+
 # =================================================
-# ✅ NEW: PUBLIC SERVICE FUNCTION USED BY interact.py
+# ✅ MODIFICATION: USER INTERACTION ENTRY POINT
+# THIS IS WHERE inferred_specialty IS DEBUGGED
 # =================================================
-def get_doctor_catalog(area: str, specialty: str) -> str:
+def handle_user_input(user_input: str, area: str):
     """
-    Fetches doctor catalog for a given area and specialty.
-    Delegates:
-    - DB querying → db.py
-    - Grouping → group_doctors_with_schedule
-    - Formatting → format_doctor_catalog
+    Entry point for user interaction.
+    MODIFICATION:
+    - Added debug print for inferred_specialty
     """
 
+    # =================================================
+    # ✅ MODIFICATION: SPECIALTY INFERENCE
+    # =================================================
+    inferred_specialty = infer_specialty_from_symptoms(user_input)
+
+    # 🔴 DEBUG LINE (AS REQUESTED)
+    print("DEBUG → inferred_specialty:", inferred_specialty)
+
+    # Safety normalization
+    inferred_specialty = inferred_specialty.strip().lower()
+    area = area.strip().lower()
+
+    return get_doctor_catalog(area, inferred_specialty)
+
+
+# =================================================
+# ✅ PUBLIC SERVICE FUNCTION
+# MODIFICATION: RETURNS STRUCTURED fallback_offer
+# =================================================
+def get_doctor_catalog(area: str, specialty: str):
+    area = area.strip().lower()
+    specialty = specialty.strip().lower()
+
+    # =================================================
+    # STEP 1: SPECIALIST EXISTENCE CHECK
+    # =================================================
+    if not specialty_exists_in_area(area, specialty):
+
+        # =================================================
+        # ❌ OLD STRING-ONLY FALLBACK (COMMENTED — DO NOT DELETE)
+        # =================================================
+        # return (
+        #     f"❌ No {specialty.replace('_', ' ').title()} "
+        #     f"found in {area.title()}.\n\n"
+        #     "You may consult a General Physician for initial evaluation."
+        # )
+
+        # =================================================
+        # ✅ MODIFICATION: STRUCTURED FALLBACK OFFER
+        # (Consumed by interact.py → awaiting = fallback_consent)
+        # =================================================
+        return {
+            "type": "fallback_offer",
+            "missing_specialty": specialty,
+            "fallback_specialty": "general_physician",
+            "area": area
+        }
+
+    # =================================================
+    # STEP 2: SHOW SPECIALIST (ALWAYS IF EXISTS)
+    # =================================================
     rows = get_doctors_by_area_and_specialty(area, specialty)
-
-    if not rows:
-        return "No doctors found in your area."
-
-    # =================================================
-    # ✅ MODIFICATION DONE HERE:
-    # Flat DB rows → structured doctor objects
-    # =================================================
     doctors = group_doctors_with_schedule(rows)
 
-    # =================================================
-    # ✅ MODIFICATION DONE HERE:
-    # Structured doctors → formatted catalog text
-    # =================================================
-    catalog_text = format_doctor_catalog(doctors)
+    if doctors:
+        return {
+            "type": "catalog",
+            "specialty": specialty,
+            "area": area,
+            "doctors": doctors
+        }
 
-    return (
-        "🩺 **Available Doctors:**\n\n"
-        f"{catalog_text}\n\n"
-        "Please choose a doctor by number."
-    )
+    # =================================================
+    # STEP 3: SPECIALIST EXISTS BUT NO SCHEDULE
+    # =================================================
+    return {
+        "type": "no_schedule",
+        "specialty": specialty,
+        "area": area
+    }
+
+
+# =================================================
+# ❌ OLD FALLBACK MAP (COMMENTED — DO NOT DELETE)
+# =================================================
+# fallback_map = {
+#     "cardiology": "general_physician",
+#     "neurology": "general_physician",
+#     "gastroenterology": "general_physician"
+# }
