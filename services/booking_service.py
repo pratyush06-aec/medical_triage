@@ -1,92 +1,59 @@
-# # =================================================
-# # BOOKING SERVICE
-# # =================================================
+# =================================================
+# BOOKING SERVICE
+# =================================================
 
-# from database.db import (
-#     is_slot_booked,
-#     create_appointment,
-#     get_appointments,
+# ❌ OLD DB IMPORTS (COMMENTED — DO NOT DELETE)
+# from database.db import is_slot_booked, create_appointment, get_appointments
 
-#     # 🔧 MODIFICATION: import booked-slot reader
-#     get_booked_slots
-# )
-
-# # =================================================
-# # 🔧 MODIFICATION: EXPOSE UNAVAILABLE SLOTS
-# # -------------------------------------------------
-# # Purpose:
-# # - Used by interact.py BEFORE showing time slots
-# # - Ensures already-booked slots are hidden from users
-# # - Keeps DB access encapsulated inside service layer
-# # =================================================
-# def get_unavailable_slots(doctor_name: str, day: str):
-#     return get_booked_slots(doctor_name, day)
-
-
-# def book_appointment(data: dict):
-#     doctor = data["doctor"]
-#     date = data["date"]
-#     time = data["time"]
-
-#     # ❌ OLD (IMPLICIT — COMMENTED, DO NOT DELETE)
-#     # Booking logic existed but availability was checked
-#     # only at final insert time.
-#     #
-#     # if is_slot_booked(doctor, date, time):
-#     #     return False, "Slot already booked"
-
-#     # =================================================
-#     # ✅ FINAL SLOT LOCK (MUST REMAIN)
-#     # -------------------------------------------------
-#     # This prevents race conditions where two users
-#     # try to book the same slot simultaneously.
-#     # =================================================
-#     if is_slot_booked(doctor, date, time):
-#         return False, "Slot already booked"
-
-#     create_appointment(
-#         patient_name=data["patient_name"],
-#         doctor=doctor,
-#         date=date,
-#         time=time
-#     )
-
-#     return True, "Appointment booked successfully"
-
-
-# def list_appointments():
-#     return get_appointments()
-
-
-
-
-
-
-
-
-
-
+# =================================================
+# ✅ CURRENT DB IMPORTS
+# =================================================
 from database.db import (
-    create_appointment,
     is_slot_booked,
+    create_appointment,
+    get_appointments,
+
+    # 🔧 MODIFICATION: import booked-slot reader
     get_booked_slots,
-    cancel_appointment_db
+
+    # 🔧 MODIFICATION: import cancel / reschedule helpers
+    get_appointments_by_patient,
+    delete_appointment
 )
 
 # =================================================
-# ❌ OLD BOOKING (COMMENTED — DO NOT DELETE)
+# 🔧 MODIFICATION: EXPOSE UNAVAILABLE SLOTS
+# -------------------------------------------------
+# Purpose:
+# - Used by interact.py BEFORE showing time slots
+# - Ensures already-booked slots are hidden from users
+# - Keeps DB access encapsulated inside service layer
 # =================================================
-# def book_appointment(data: dict):
-#     ...
+def get_unavailable_slots(doctor_name: str, day: str):
+    return get_booked_slots(doctor_name, day)
+
 
 # =================================================
-# ✅ USER-AWARE BOOKING (NEW)
+# BOOK APPOINTMENT (UNCHANGED CORE LOGIC)
 # =================================================
-def book_appointment_with_user(user_id: int, data: dict):
+def book_appointment(data: dict):
     doctor = data["doctor"]
     date = data["date"]
     time = data["time"]
 
+    # ❌ OLD (IMPLICIT — COMMENTED, DO NOT DELETE)
+    # Booking logic existed but availability was checked
+    # only at final insert time.
+    #
+    # if is_slot_booked(doctor, date, time):
+    #     return False, "Slot already booked"
+
+    # =================================================
+    # ✅ FINAL SLOT LOCK (MUST REMAIN)
+    # -------------------------------------------------
+    # Prevents race conditions when two users try to
+    # book the same slot at the same time.
+    # =================================================
     if is_slot_booked(doctor, date, time):
         return False, "Slot already booked"
 
@@ -94,57 +61,48 @@ def book_appointment_with_user(user_id: int, data: dict):
         patient_name=data["patient_name"],
         doctor=doctor,
         date=date,
-        time=time,
-        user_id=user_id
+        time=time
     )
 
-    return True, "✅ Appointment booked successfully"
+    return True, "Appointment booked successfully"
 
-
-def cancel_appointment(user_id: int, appointment_id: int):
-    success = cancel_appointment_db(appointment_id, user_id)
-    if not success:
-        return False, "Unable to cancel appointment"
-    return True, "❌ Appointment cancelled successfully"
 
 # =================================================
-# 🔁 COMPATIBILITY WRAPPER (DO NOT DELETE)
-# -------------------------------------------------
-# Purpose:
-# - Keeps existing imports working
-# - Routes legacy calls to new user-aware logic
-# - Uses user_id = None for now
+# LIST APPOINTMENTS (UNCHANGED)
 # =================================================
-def book_appointment(data: dict):
-    # ❗ TEMPORARY fallback for old callers
-    # This will be fully removed once interact.py
-    # is fully session-based
-    return book_appointment_with_user(
-        user_id=None,
-        data=data
-    )
-
-# =================================================
-# 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
-# -------------------------------------------------
-# Purpose:
-# - Keeps old booking routes working
-# - Prevents import crashes
-# - Will be removed after full migration
-# =================================================
-from database.db import get_appointments
-
 def list_appointments():
     return get_appointments()
 
+
 # =================================================
-# 🔁 LEGACY SLOT VISIBILITY HELPER (DO NOT DELETE)
+# 🔧 MODIFICATION: FETCH APPOINTMENTS FOR A PATIENT
+# -------------------------------------------------
+# Used in:
+# - Reschedule flow
+# - Cancel flow
+#
+# NOTE:
+# - Earlier version used get_appointments()
+# - This version is patient-specific and correct
+# =================================================
+def get_patient_appointments(patient_name: str):
+    """
+    Fetch all appointments for a patient.
+    Used by interact.py for cancel / reschedule flow.
+    """
+    return get_appointments_by_patient(patient_name)
+
+
+# =================================================
+# 🔧 MODIFICATION: CANCEL APPOINTMENT
 # -------------------------------------------------
 # Purpose:
-# - Used by interact.py to hide booked slots
-# - Delegates to DB layer
+# - Used for cancel flow
+# - Used internally during rescheduling
 # =================================================
-from database.db import get_booked_slots
-
-def get_unavailable_slots(doctor_name: str, day: str):
-    return get_booked_slots(doctor_name, day)
+def cancel_appointment(appointment_id: int):
+    """
+    Cancel appointment by rowid.
+    Slot becomes free automatically.
+    """
+    delete_appointment(appointment_id)
