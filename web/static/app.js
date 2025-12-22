@@ -1,59 +1,3 @@
-// async function sendMessage() {
-//     const inputEl = document.getElementById("user-input");
-//     const chat = document.getElementById("chat");
-
-//     const msg = inputEl.value;
-//     if (!msg.trim()) return;
-
-//     chat.innerHTML += `<div class="text-right mb-2"><span class="inline-block bg-blue-200 p-2 rounded">${msg}</span></div>`;
-//     inputEl.value = "";
-
-//     const response = await fetch("/interact", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ message: msg })
-//     });
-
-//     const data = await response.json();
-
-//     chat.innerHTML += `<div class="text-left mb-2"><span class="inline-block bg-gray-200 p-2 rounded">${data.reply}</span></div>`;
-//     chat.scrollTop = chat.scrollHeight;
-// }
-
-
-
-
-
-
-
-// async function sendMessage() {
-//     const input = document.getElementById("user-input");
-//     const message = input.value.trim();
-//     if (!message) return;
-
-//     addMessage(message, "user");
-//     input.value = "";
-
-//     const response = await fetch("/interact", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ message })
-//     });
-
-//     // ✅ ALWAYS parse JSON
-//     const data = await response.json();
-
-//     // ✅ SAFETY CHECK (prevents null crash)
-//     if (!data || !data.reply) {
-//         addMessage("⚠️ Something went wrong. Please try again.", "bot");
-//         return;
-//     }
-
-//     // ✅ DISPLAY STRING (not object)
-//     addMessage(data.reply, "bot");
-// }
-
-
 /*************************************************
  * ❌ OLD (COMMENTED — DO NOT DELETE)
  *************************************************/
@@ -69,16 +13,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     authView.style.display = "none";
     chatView.style.display = "none";
 
-    await checkAuth();
+    // ❌ OLD AUTH CHECK (CAUSES 404 — DO NOT DELETE)
+    // await checkAuth();
+
+    // ✅ NEW: Directly show chat (session handled backend-side)
+    showChat();
+
+    // ✅ Profile toggle binding
+    const profileBtn = document.getElementById("profile-toggle");
+    if (profileBtn) {
+        profileBtn.addEventListener("click", toggleProfile);
+    }
 });
 
 /*************************************************
- * ✅ AUTH CHECK
+ * ❌ OLD AUTH CHECK (COMMENTED — DO NOT DELETE)
  *************************************************/
+/*
 async function checkAuth() {
     let res;
     try {
-        res = await fetch("/profile/me", {
+        res = await fetch("/auth/profile/me", {
             credentials: "same-origin"
         });
     } catch {
@@ -93,6 +48,7 @@ async function checkAuth() {
         showChat();
     }
 }
+*/
 
 function showAuth() {
     document.getElementById("chat-view").style.display = "none";
@@ -111,16 +67,64 @@ function showChat() {
 }
 
 /*************************************************
- * ✅ LOGOUT (NEW)
+ * 👤 PROFILE PANEL LOGIC (FINAL)
+ *************************************************/
+async function toggleProfile() {
+    const panel = document.getElementById("profile-panel");
+
+    // Toggle close
+    if (!panel.classList.contains("hidden")) {
+        panel.classList.add("hidden");
+        return;
+    }
+
+    const res = await fetch("auth/profile/appointments", {
+        credentials: "same-origin"
+    });
+
+    if (!res.ok) {
+        console.error("Failed to load profile appointments");
+        return;
+    }
+
+    const data = await res.json();
+
+    renderAppointments("upcoming-appointments", data.upcoming);
+    renderAppointments("past-appointments", data.past);
+
+    panel.classList.remove("hidden");
+}
+
+function renderAppointments(elementId, appointments) {
+    const ul = document.getElementById(elementId);
+    ul.innerHTML = "";
+
+    if (!appointments || appointments.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No appointments";
+        ul.appendChild(li);
+        return;
+    }
+
+    appointments.forEach(a => {
+        const li = document.createElement("li");
+
+        // ✅ FIX: backend does NOT return specialty
+        li.textContent = `${a.date} ${a.time} • Dr ${a.doctor}`;
+
+        ul.appendChild(li);
+    });
+}
+
+/*************************************************
+ * ✅ LOGOUT
  *************************************************/
 async function logout() {
     await fetch("/auth/logout", {
         method: "POST",
         credentials: "same-origin"
     });
-
-    // Reload to re-trigger auth gate
-    location.reload();
+    showAuth();
 }
 
 /*************************************************
@@ -135,9 +139,10 @@ async function sendMessage() {
     input.value = "";
 
     const response = await fetch("/interact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message })
+    method: "POST",
+    credentials: "same-origin", // ✅ ADD THIS
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message })
     });
 
     const data = await response.json();

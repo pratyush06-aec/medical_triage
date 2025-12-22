@@ -6,7 +6,7 @@ import re
 # 🔧 MODIFICATION: IMPORT CANCEL / LOOKUP HELPERS
 # =================================================
 from services.booking_service import (
-    book_appointment,
+    book_appointment_with_user,
     get_unavailable_slots,
     get_patient_appointments,
     cancel_appointment
@@ -58,7 +58,16 @@ def format_appointments_list(appts):
 
 @router.post("/interact")
 def interact(req: ChatRequest, request: Request):
-    user_id = request.client.host
+    # ❌ WRONG: IP-based identity (breaks profile linking)
+# user_id = request.client.host
+
+# ✅ CORRECT: session-authenticated user identity
+    user = request.session.get("user")
+    if not user:
+        return {"reply": "❌ Please log in to continue."}
+
+    user_id = user["id"]
+
     msg = req.message.lower().strip()
     msg = re.sub(r"[.,]", "", msg)
     msg = re.sub(r"\s+", " ", msg)
@@ -257,12 +266,13 @@ def interact(req: ChatRequest, request: Request):
     if ctx["awaiting"] == "name":
         ctx["patient_name"] = msg.title()
 
-        success, message = book_appointment({
+        success, message = book_appointment_with_user(user_id, {
             "patient_name": ctx["patient_name"],
             "doctor": ctx["doctor"]["name"],
             "date": ctx["day"],
             "time": ctx["time"]
-        })
+})
+
 
         booking_context.pop(user_id, None)
         return {"reply": message}
@@ -389,7 +399,7 @@ def interact(req: ChatRequest, request: Request):
 
         cancel_appointment(ctx["selected_appointment"][0])
 
-        book_appointment({
+        book_appointment_with_user(user_id, {
             "patient_name": ctx["patient_name"],
             "doctor": ctx["doctor"]["name"],
             "date": ctx["day"],

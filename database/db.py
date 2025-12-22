@@ -243,18 +243,51 @@ def get_appointments():
     return rows
 
 
+# def get_user_appointments(user_id: int):
+#     """
+#     Returns appointments for authenticated users.
+#     Used by profile_service to split past & upcoming.
+#     """
+#     conn = get_connection()
+#     cursor = conn.cursor()
+#     cursor.execute("""
+#         SELECT
+#             a.id,
+#             d.name AS doctor,
+#             d.specialty,
+#             a.date,
+#             a.time,
+#             a.status
+#         FROM appointments a
+#         JOIN doctors d ON a.doctor_id = d.id
+#         WHERE a.user_id = ?
+#         ORDER BY a.date DESC, a.time DESC
+#     """, (user_id,))
+#     rows = cursor.fetchall()
+#     conn.close()
+#     return rows
+
+
 def get_user_appointments(user_id: int):
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute("""
-        SELECT id, doctor, date, time, status
+        SELECT
+            id,
+            doctor,
+            date,
+            time,
+            status
         FROM appointments
         WHERE user_id = ?
-        ORDER BY created_at DESC
+        ORDER BY date DESC, time DESC
     """, (user_id,))
+
     rows = cursor.fetchall()
     conn.close()
     return rows
+
 
 
 def cancel_appointment_db(appointment_id: int, user_id: int):
@@ -315,8 +348,109 @@ DOCTOR_CATALOG = [
             "Wednesday": ["09:00-11:00"],
             "Saturday": ["10:00-12:00"]
         }
+    },
+    {
+        "doctor_id": 5,
+        "name": "Dr. Suman Chatterjee",
+        "specialty": "cardiology",
+        "area": "new town",
+        "schedule": {
+            "Tuesday": ["11:00-12:00"],
+            "Friday": ["10:00-12:00"]
+        }
+    },
+    {
+        "doctor_id": 6,
+        "name": "Dr. Priya Mukherjee",
+        "specialty": "gastroenterology",
+        "area": "new town",
+        "schedule": {
+            "Monday": ["14:00-16:00"],
+            "Thursday": ["10:00-11:00"]
+        }
+    },
+    {
+        "doctor_id": 7,
+        "name": "Dr. Amitava Das",
+        "specialty": "neurology",
+        "area": "sealdah",
+        "schedule": {
+            "Wednesday": ["11:00-13:00"],
+            "Saturday": ["09:00-10:00"]
+        }
+    },
+    {
+        "doctor_id": 8,
+        "name": "Dr. Rina Banerjee",
+        "specialty": "general_physician",
+        "area": "sealdah",
+        "schedule": {
+            "Monday": ["10:00-12:00"],
+            "Friday": ["09:00-11:00"]
+        }
+    },
+    {
+        "doctor_id": 9,
+        "name": "Dr. Kunal Ghosh",
+        "specialty": "cardiology",
+        "area": "dum dum",
+        "schedule": {
+            "Tuesday": ["15:00-17:00"],
+            "Thursday": ["11:00-12:00"]
+        }
+    },
+    {
+        "doctor_id": 10,
+        "name": "Dr. Sohini Paul",
+        "specialty": "gastroenterology",
+        "area": "dum dum",
+        "schedule": {
+            "Wednesday": ["09:00-11:00"],
+            "Saturday": ["11:00-12:00"]
+        }
+    },
+    {
+        "doctor_id": 11,
+        "name": "Dr. Debashis Roy",
+        "specialty": "neurology",
+        "area": "howrah",
+        "schedule": {
+            "Monday": ["15:00-17:00"],
+            "Friday": ["10:00-11:00"]
+        }
+    },
+    {
+        "doctor_id": 12,
+        "name": "Dr. Tanima Sen",
+        "specialty": "general_physician",
+        "area": "howrah",
+        "schedule": {
+            "Tuesday": ["09:00-11:00"],
+            "Thursday": ["14:00-15:00"]
+        }
+    },
+    {
+        "doctor_id": 13,
+        "name": "Dr. Anirban Bose",
+        "specialty": "cardiology",
+        "area": "behala",
+        "schedule": {
+            "Wednesday": ["10:00-12:00"],
+            "Saturday": ["14:00-15:00"]
+        }
+    },
+    {
+        "doctor_id": 14,
+        "name": "Dr. Moumita Dey",
+        "specialty": "general_physician",
+        "area": "behala",
+        "schedule": {
+            "Monday": ["09:00-10:00"],
+            "Friday": ["16:00-17:00"]
+        }
     }
 ]
+
 
 
 def seed_doctor_catalog():
@@ -331,31 +465,6 @@ def seed_doctor_catalog():
             for slot in slots:
                 add_doctor_schedule(str(doctor["doctor_id"]), day, slot)
 
-def book_appointment_with_user(user_id, data: dict):
-    doctor = data["doctor"]
-    date = data["date"]
-    time = data["time"]
-
-    if is_slot_booked(doctor, date, time):
-        return False, "Slot already booked"
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO appointments
-        (user_id, patient_name, doctor, date, time, status, created_at)
-        VALUES (?, ?, ?, ?, ?, 'booked', ?)
-    """, (
-        user_id,
-        data["patient_name"],
-        doctor,
-        date,
-        time,
-        datetime.utcnow().isoformat()
-    ))
-    conn.commit()
-    conn.close()
-    return True, "Appointment booked successfully"
 # =================================================
 # 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
 # -------------------------------------------------

@@ -5,6 +5,7 @@ from services.booking_service import (
     get_appointments_by_patient,
     delete_appointment,
 )
+from services.booking_service import book_appointment_with_user
 
 # =================================================
 # ✅ ROUTER (REQUIRED)
@@ -15,12 +16,17 @@ router = APIRouter(prefix="/booking", tags=["Booking"])
 # =================================================
 # 📅 BOOK APPOINTMENT
 # =================================================
+
 @router.post("/book")
 def book(data: dict, request: Request):
-    user_id = request.session.get("user_id")
-    success, message = book_appointment(data)
-    return {"success": success, "message": message}
+    user = request.session.get("user")
+    user_id = user["id"] if user else None
 
+    if not user_id:
+        return {"success": False, "message": "Not authenticated"}
+
+    success, message = book_appointment_with_user(user_id, data)
+    return {"success": success, "message": message}
 
 # =================================================
 # 📋 LIST ALL APPOINTMENTS (LEGACY)

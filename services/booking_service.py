@@ -19,7 +19,8 @@ from database.db import (
     # 🔧 MODIFICATION: import cancel / reschedule helpers
     get_appointments_by_patient,
     delete_appointment,
-    book_appointment_with_user
+    book_appointment_with_user,
+    
 )
 
 
@@ -117,14 +118,14 @@ def cancel_appointment(appointment_id: int):
 # - Routes legacy calls to new user-aware logic
 # - Uses user_id = None for now
 # =================================================
-def book_appointment(data: dict):
-    # ❗ TEMPORARY fallback for old callers
-    # This will be fully removed once interact.py
-    # is fully session-based
-    return book_appointment_with_user(
-        user_id=None,
-        data=data
-    )
+# def book_appointment(data: dict):
+#     # ❗ TEMPORARY fallback for old callers
+#     # This will be fully removed once interact.py
+#     # is fully session-based
+#     return book_appointment_with_user(
+#         user_id=None,
+#         data=data
+#     )
 
 # =================================================
 # 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
