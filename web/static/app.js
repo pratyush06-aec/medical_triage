@@ -22,7 +22,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ✅ Profile toggle binding
     const profileBtn = document.getElementById("profile-toggle");
     if (profileBtn) {
-        profileBtn.addEventListener("click", toggleProfile);
+       profileBtn.addEventListener("click", () => {
+       window.location.href = "/static/profile.html";
+});
+
     }
 });
 
