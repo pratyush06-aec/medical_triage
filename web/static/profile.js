@@ -35,10 +35,3 @@ function goBack() {
   window.location.href = "/";
 }
 
-async function logout() {
-  await fetch("/auth/logout", {
-    method: "POST",
-    credentials: "include"
-  });
-  window.location.href = "/static/auth.html";
-}
