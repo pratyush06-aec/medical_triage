@@ -2,3 +2,7 @@
 agent_logs.log
 venv/
 .venv/
+
+# SQLite database (persistent local data)
+database/*.db
+database/*.sqlite
