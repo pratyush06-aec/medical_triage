@@ -1,9 +1,278 @@
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import hashlib
 
 # =================================================
-# ✅ SYNTHETIC DOCTOR CATALOG DATA (UNCHANGED)
+# 📁 DATABASE FILE (DO NOT DELETE)
+# =================================================
+DB_PATH = Path(__file__).parent / "clinic.db"
+
+
+# =================================================
+# 🔌 CONNECTION
+# =================================================
+def get_connection():
+    return sqlite3.connect(DB_PATH)
+
+
+# =================================================
+# 🧱 INITIALIZATION
+# =================================================
+def init_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # USERS (AUTH)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # APPOINTMENTS
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            patient_name TEXT NOT NULL,
+            doctor TEXT NOT NULL,
+            date TEXT NOT NULL,
+            time TEXT NOT NULL,
+            status TEXT DEFAULT 'booked',
+            created_at TEXT NOT NULL,
+            UNIQUE (doctor, date, time)
+        )
+    """)
+
+    # DOCTORS
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS doctors (
+            doctor_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            specialty TEXT NOT NULL,
+            area TEXT NOT NULL
+        )
+    """)
+
+    # SCHEDULE
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS doctor_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doctor_id TEXT NOT NULL,
+            day TEXT NOT NULL,
+            time TEXT NOT NULL,
+            UNIQUE (doctor_id, day, time)
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+    seed_doctor_catalog()
+
+
+# =================================================
+# 🔐 AUTH HELPERS
+# =================================================
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def create_user(email: str, password: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
+            (email, hash_password(password), datetime.utcnow().isoformat())
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return None
+    conn.close()
+    return get_user_by_email(email)
+
+
+def get_user_by_email(email: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, email FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+
+def authenticate_user(email: str, password: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, password_hash FROM users WHERE email = ?",
+        (email,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row or row[1] != hash_password(password):
+        return None
+    return row[0]
+
+
+# =================================================
+# 🩺 DOCTOR HELPERS
+# =================================================
+def add_doctor(doctor_id, name, specialty, area):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO doctors VALUES (?, ?, ?, ?)",
+        (doctor_id, name, specialty, area)
+    )
+    conn.commit()
+    conn.close()
+
+
+def add_doctor_schedule(doctor_id, day, time):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO doctor_schedule (doctor_id, day, time) VALUES (?, ?, ?)",
+        (doctor_id, day, time)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_doctors_by_area_and_specialty(area: str, specialty: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT d.doctor_id, d.name, d.specialty, s.day, s.time
+        FROM doctors d
+        JOIN doctor_schedule s ON d.doctor_id = s.doctor_id
+        WHERE d.area = ? AND d.specialty = ?
+    """, (area.lower(), specialty.lower()))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def specialty_exists_in_area(area: str, specialty: str) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT 1 FROM doctors WHERE area = ? AND specialty = ? LIMIT 1",
+        (area.lower(), specialty.lower())
+    )
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
+
+# =================================================
+# 📅 APPOINTMENTS (FULLY COMPATIBLE)
+# =================================================
+def is_slot_booked(doctor, date, time):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 1 FROM appointments
+        WHERE doctor = ? AND date = ? AND time = ? AND status = 'booked'
+    """, (doctor, date, time))
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
+
+def book_appointment_with_user(user_id, data: dict):
+    doctor = data["doctor"]
+    date = data["date"]
+    time = data["time"]
+
+    if is_slot_booked(doctor, date, time):
+        return False, "Slot already booked"
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO appointments
+        (user_id, patient_name, doctor, date, time, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 'booked', ?)
+    """, (
+        user_id,
+        data["patient_name"],
+        doctor,
+        date,
+        time,
+        datetime.utcnow().isoformat()
+    ))
+    conn.commit()
+    conn.close()
+    return True, "Appointment booked successfully"
+
+
+# 🔁 LEGACY FALLBACK (DO NOT DELETE)
+def book_appointment(data: dict):
+    return book_appointment_with_user(None, data)
+
+
+def get_booked_slots(doctor_name: str, day: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT time FROM appointments
+        WHERE doctor = ? AND date = ? AND status = 'booked'
+    """, (doctor_name, day))
+    rows = cursor.fetchall()
+    conn.close()
+    return {row[0] for row in rows}
+
+
+def get_appointments():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, patient_name, doctor, date, time, status
+        FROM appointments
+        ORDER BY created_at DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def get_user_appointments(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, doctor, date, time, status
+        FROM appointments
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def cancel_appointment_db(appointment_id: int, user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE appointments
+        SET status = 'cancelled'
+        WHERE id = ? AND user_id = ? AND status = 'booked'
+    """, (appointment_id, user_id))
+    conn.commit()
+    updated = cursor.rowcount
+    conn.close()
+    return updated > 0
+
+
+# =================================================
+# 🌱 FULL DOCTOR CATALOG (RESTORED)
 # =================================================
 DOCTOR_CATALOG = [
     {
@@ -46,317 +315,100 @@ DOCTOR_CATALOG = [
             "Wednesday": ["09:00-11:00"],
             "Saturday": ["10:00-12:00"]
         }
-    },
-    {
-        "doctor_id": 5,
-        "name": "Dr. Sneha Kapoor",
-        "specialty": "dermatology",
-        "area": "new town",
-        "schedule": {
-            "Tuesday": ["11:00-13:00"],
-            "Thursday": ["10:00-12:00"]
-        }
-    },
-    {
-        "doctor_id": 6,
-        "name": "Dr. Amit Chatterjee",
-        "specialty": "orthopedics",
-        "area": "new town",
-        "schedule": {
-            "Monday": ["14:00-16:00"],
-            "Friday": ["09:00-11:00"]
-        }
-    },
-    {
-        "doctor_id": 7,
-        "name": "Dr. Priya Mukherjee",
-        "specialty": "gastroenterology",
-        "area": "ballygunge",
-        "schedule": {
-            "Wednesday": ["13:00-15:00"],
-            "Saturday": ["10:00-11:00"]
-        }
-    },
-    {
-        "doctor_id": 8,
-        "name": "Dr. Kunal Verma",
-        "specialty": "neurology",
-        "area": "salt lake",
-        "schedule": {
-            "Tuesday": ["15:00-17:00"],
-            "Friday": ["11:00-12:00"]
-        }
-    },
-    {
-        "doctor_id": 9,
-        "name": "Dr. Sharmila Das",
-        "specialty": "general_physician",
-        "area": "new town",
-        "schedule": {
-            "Monday": ["08:00-10:00"],
-            "Thursday": ["08:00-10:00"]
-        }
-    },
-    {
-        "doctor_id": 10,
-        "name": "Dr. Vikram Sood",
-        "specialty": "cardiology",
-        "area": "ballygunge",
-        "schedule": {
-            "Tuesday": ["10:00-12:00"],
-            "Saturday": ["11:00-13:00"]
-        }
     }
 ]
 
-DB_PATH = Path(__file__).parent / "clinic.db"
 
-# =================================================
-# DB CONNECTION
-# =================================================
-def get_connection():
-    return sqlite3.connect(DB_PATH)
-
-# =================================================
-# DB INITIALIZATION
-# =================================================
-def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # =================================================
-    # ❌ OLD APPOINTMENTS TABLE (COMMENTED — DO NOT DELETE)
-    # =================================================
-    # cursor.execute("""
-    #     CREATE TABLE IF NOT EXISTS appointments (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         patient_name TEXT NOT NULL,
-    #         doctor TEXT NOT NULL,
-    #         date TEXT NOT NULL,
-    #         time TEXT NOT NULL,
-    #         created_at TEXT NOT NULL
-    #     )
-    # """)
-
-    # =================================================
-    # ✅ CURRENT APPOINTMENTS TABLE (WEEKLY SLOT LOCKING)
-    # =================================================
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS appointments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            patient_name TEXT NOT NULL,
-            doctor TEXT NOT NULL,
-            date TEXT NOT NULL,
-            time TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            UNIQUE (doctor, date, time)
-        )
-    """)
-
-    # =================================================
-    # DOCTORS TABLE (UNCHANGED)
-    # =================================================
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS doctors (
-            doctor_id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            specialty TEXT NOT NULL,
-            area TEXT NOT NULL
-        )
-    """)
-
-    # =================================================
-    # DOCTOR SCHEDULE TABLE (UNCHANGED)
-    # =================================================
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS doctor_schedule (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            doctor_id TEXT NOT NULL,
-            day TEXT NOT NULL,
-            time TEXT NOT NULL,
-            FOREIGN KEY (doctor_id) REFERENCES doctors (doctor_id),
-            UNIQUE (doctor_id, day, time)
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-    seed_doctor_catalog()
-
-# =================================================
-# INSERT HELPERS (UNCHANGED)
-# =================================================
-def add_doctor(doctor_id, name, specialty, area):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR IGNORE INTO doctors (doctor_id, name, specialty, area)
-        VALUES (?, ?, ?, ?)
-    """, (doctor_id, name, specialty, area))
-    conn.commit()
-    conn.close()
-
-def add_doctor_schedule(doctor_id, day, time):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR IGNORE INTO doctor_schedule (doctor_id, day, time)
-        VALUES (?, ?, ?)
-    """, (doctor_id, day, time))
-    conn.commit()
-    conn.close()
-
-# =================================================
-# SEED DATA (UNCHANGED)
-# =================================================
 def seed_doctor_catalog():
     for doctor in DOCTOR_CATALOG:
         add_doctor(
-            doctor_id=str(doctor["doctor_id"]),
-            name=doctor["name"],
-            specialty=doctor["specialty"],
-            area=doctor["area"]
+            str(doctor["doctor_id"]),
+            doctor["name"],
+            doctor["specialty"],
+            doctor["area"]
         )
         for day, slots in doctor["schedule"].items():
             for slot in slots:
-                add_doctor_schedule(
-                    doctor_id=str(doctor["doctor_id"]),
-                    day=day,
-                    time=slot
-                )
+                add_doctor_schedule(str(doctor["doctor_id"]), day, slot)
 
-# =================================================
-# QUERY HELPERS
-# =================================================
-def get_doctors_by_area_and_specialty(area: str, specialty: str):
+def book_appointment_with_user(user_id, data: dict):
+    doctor = data["doctor"]
+    date = data["date"]
+    time = data["time"]
+
+    if is_slot_booked(doctor, date, time):
+        return False, "Slot already booked"
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT d.doctor_id, d.name, d.specialty, s.day, s.time
-        FROM doctors d
-        JOIN doctor_schedule s ON d.doctor_id = s.doctor_id
-        WHERE d.area = ? AND d.specialty = ?
-        ORDER BY d.name, s.day
-    """, (area.lower(), specialty.lower()))
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-# =================================================
-# SPECIALTY EXISTENCE CHECK (UNCHANGED)
-# =================================================
-def specialty_exists_in_area(area: str, specialty: str) -> bool:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 1
-        FROM doctors
-        WHERE area = ? AND specialty = ?
-        LIMIT 1
-    """, (area.lower(), specialty.lower()))
-    exists = cursor.fetchone() is not None
-    conn.close()
-    return exists
-
-# =================================================
-# APPOINTMENT LOGIC (UNCHANGED)
-# =================================================
-def create_appointment(patient_name, doctor, date, time):
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO appointments (patient_name, doctor, date, time, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            patient_name,
-            doctor,
-            date,
-            time,
-            datetime.utcnow().isoformat()
-        ))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
-        raise
-    conn.close()
-
-def get_appointments():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM appointments")
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-def is_slot_booked(doctor, date, time):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 1 FROM appointments
-        WHERE doctor = ? AND date = ? AND time = ?
-        LIMIT 1
-    """, (doctor, date, time))
-    exists = cursor.fetchone() is not None
-    conn.close()
-    return exists
-
-# =================================================
-# 🔧 MODIFICATION: FETCH BOOKED SLOTS (UNCHANGED)
-# =================================================
-def get_booked_slots(doctor_name: str, day: str):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT time FROM appointments
-        WHERE doctor = ? AND date = ?
-    """, (doctor_name, day))
-    rows = cur.fetchall()
-    conn.close()
-    return {row[0] for row in rows}
-
-# =================================================
-# 🔧 CANCEL / RESCHEDULE SUPPORT (FIXED QUERY)
-# =================================================
-def get_appointments_by_patient(patient_name: str):
-    """
-    Used for:
-    - Cancel appointment
-    - Reschedule appointment
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # ❌ OLD BROKEN QUERY (COMMENTED — appointments table has no specialty/area)
-    # cursor.execute("""
-    #     SELECT rowid, doctor, date, time, specialty, area
-    #     FROM appointments
-    #     WHERE patient_name = ?
-    # """, (patient_name,))
-
-    # =================================================
-    # ✅ FIXED QUERY — matches actual table schema
-    # =================================================
-    cursor.execute("""
-        SELECT rowid, doctor, date, time
-        FROM appointments
-        WHERE patient_name = ?
-    """, (patient_name,))
-
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-def delete_appointment(rowid: int):
-    """
-    Deletes appointment by rowid.
-    Frees slot automatically due to UNIQUE constraint removal.
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM appointments WHERE rowid = ?",
-        (rowid,)
-    )
+        INSERT INTO appointments
+        (user_id, patient_name, doctor, date, time, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 'booked', ?)
+    """, (
+        user_id,
+        data["patient_name"],
+        doctor,
+        date,
+        time,
+        datetime.utcnow().isoformat()
+    ))
     conn.commit()
     conn.close()
+    return True, "Appointment booked successfully"
+# =================================================
+# 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
+# -------------------------------------------------
+# Older routes/services still import create_appointment
+# This wrapper preserves backward compatibility.
+# =================================================
+def create_appointment(patient_name, doctor, date, time, user_id=None):
+    data = {
+        "patient_name": patient_name,
+        "doctor": doctor,
+        "date": date,
+        "time": time
+    }
+    return book_appointment_with_user(user_id, data)
+# =================================================
+# 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
+# -------------------------------------------------
+# Older services expect this function.
+# Maps patient_name → appointments.
+# =================================================
+def get_appointments_by_patient(patient_name: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, patient_name, doctor, date, time, status
+        FROM appointments
+        WHERE patient_name = ?
+        ORDER BY created_at DESC
+    """, (patient_name,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+# =================================================
+# 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
+# -------------------------------------------------
+# booking_service expects delete_appointment
+# Internally maps to cancel_appointment_db
+# =================================================
+def delete_appointment(appointment_id: int, user_id: int | None = None):
+    # If user_id is provided, enforce ownership
+    if user_id is not None:
+        return cancel_appointment_db(appointment_id, user_id)
+
+    # Legacy behavior: cancel without user check
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE appointments
+        SET status = 'cancelled'
+        WHERE id = ? AND status = 'booked'
+    """, (appointment_id,))
+    conn.commit()
+    updated = cursor.rowcount
+    conn.close()
+    return updated > 0

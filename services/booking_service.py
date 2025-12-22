@@ -18,8 +18,10 @@ from database.db import (
 
     # 🔧 MODIFICATION: import cancel / reschedule helpers
     get_appointments_by_patient,
-    delete_appointment
+    delete_appointment,
+    book_appointment_with_user
 )
+
 
 # =================================================
 # 🔧 MODIFICATION: EXPOSE UNAVAILABLE SLOTS
@@ -106,3 +108,34 @@ def cancel_appointment(appointment_id: int):
     Slot becomes free automatically.
     """
     delete_appointment(appointment_id)
+
+# =================================================
+# 🔁 COMPATIBILITY WRAPPER (DO NOT DELETE)
+# -------------------------------------------------
+# Purpose:
+# - Keeps existing imports working
+# - Routes legacy calls to new user-aware logic
+# - Uses user_id = None for now
+# =================================================
+def book_appointment(data: dict):
+    # ❗ TEMPORARY fallback for old callers
+    # This will be fully removed once interact.py
+    # is fully session-based
+    return book_appointment_with_user(
+        user_id=None,
+        data=data
+    )
+
+# =================================================
+# 🔁 LEGACY COMPATIBILITY (DO NOT DELETE)
+# -------------------------------------------------
+# Purpose:
+# - Keeps old booking routes working
+# - Prevents import crashes
+# - Will be removed after full migration
+# =================================================
+from database.db import get_appointments
+
+def list_appointments():
+    return get_appointments()
+
