@@ -1,0 +1,90 @@
+<!-- <div id="auth-container">
+  <h2>Login / Sign Up</h2>
+
+  <input id="email" type="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
+
+  <div style="margin-top: 10px;">
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Sign Up</button>
+  </div>
+
+  <p id="auth-error" style="color:red;"></p>
+</div>
+
+<script src="/static/auth.js"></script> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login / Sign Up</title>
+</head>
+<body>
+
+<!-- =================================================
+     ❌ OLD AUTH UI (COMMENTED — DO NOT DELETE)
+     ================================================= -->
+<!--
+<div id="auth-container">
+  <h2>Login / Sign Up</h2>
+
+  <input id="email" type="email" placeholder="Email" />
+  <input id="password" type="password" placeholder="Password" />
+
+  <div style="margin-top: 10px;">
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Sign Up</button>
+  </div>
+
+  <p id="auth-error" style="color:red;"></p>
+</div>
+-->
+
+<!-- =================================================
+     ✅ NEW AUTH UI (MODIFIED)
+     =================================================
+     🔧 MODIFICATION:
+     - Wrapped inputs in a <form>
+     - Explicitly set button type="button"
+     - Prevents browser auto form submission
+     - Allows JS login()/signup() to execute
+-->
+
+<div id="auth-container">
+  <h2>Login / Sign Up</h2>
+
+  <form>
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+
+    <div style="margin-top: 10px;">
+      <!-- 🔧 FIX: prevent form submission -->
+      <button type="button" onclick="login()">Login</button>
+      <button type="button" onclick="signup()">Sign Up</button>
+    </div>
+  </form>
+
+  <p id="auth-error" style="color:red;"></p>
+</div>
+
+<!-- =================================================
+     AUTH SCRIPT
+     ================================================= -->
+<script src="/static/auth.js"></script>
+
+</body>
+</html>
