@@ -949,7 +949,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 1,
         "name": "Dr. Ananya Sen",
-        "specialty": "cardiology",
+        "specialty": "cardiologist",
         "area": "salt lake",
         "schedule": {
             "Monday": ["10:00-11:00", "11:00-12:00"],
@@ -959,7 +959,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 2,
         "name": "Dr. Rakesh Malhotra",
-        "specialty": "gastroenterology",
+        "specialty": "gastroenterologist",
         "area": "salt lake",
         "schedule": {
             "Tuesday": ["09:00-10:00", "10:00-11:00"],
@@ -969,7 +969,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 3,
         "name": "Dr. Nivedita Roy",
-        "specialty": "neurology",
+        "specialty": "neurologist",
         "area": "ballygunge",
         "schedule": {
             "Monday": ["16:00-17:00"],
@@ -990,7 +990,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 5,
         "name": "Dr. Suman Chatterjee",
-        "specialty": "cardiology",
+        "specialty": "cardiologist",
         "area": "new town",
         "schedule": {
             "Tuesday": ["11:00-12:00"],
@@ -1000,7 +1000,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 6,
         "name": "Dr. Priya Mukherjee",
-        "specialty": "gastroenterology",
+        "specialty": "gastroenterologist",
         "area": "new town",
         "schedule": {
             "Monday": ["14:00-16:00"],
@@ -1010,7 +1010,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 7,
         "name": "Dr. Amitava Das",
-        "specialty": "neurology",
+        "specialty": "neurologist",
         "area": "sealdah",
         "schedule": {
             "Wednesday": ["11:00-13:00"],
@@ -1030,7 +1030,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 9,
         "name": "Dr. Kunal Ghosh",
-        "specialty": "cardiology",
+        "specialty": "cardiologist",
         "area": "dum dum",
         "schedule": {
             "Tuesday": ["15:00-17:00"],
@@ -1040,7 +1040,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 10,
         "name": "Dr. Sohini Paul",
-        "specialty": "gastroenterology",
+        "specialty": "gastroenterologist",
         "area": "dum dum",
         "schedule": {
             "Wednesday": ["09:00-11:00"],
@@ -1050,7 +1050,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 11,
         "name": "Dr. Debashis Roy",
-        "specialty": "neurology",
+        "specialty": "neurologist",
         "area": "howrah",
         "schedule": {
             "Monday": ["15:00-17:00"],
@@ -1070,7 +1070,7 @@ DOCTOR_CATALOG = [
     {
         "doctor_id": 13,
         "name": "Dr. Anirban Bose",
-        "specialty": "cardiology",
+        "specialty": "cardiologist",
         "area": "behala",
         "schedule": {
             "Wednesday": ["10:00-12:00"],
