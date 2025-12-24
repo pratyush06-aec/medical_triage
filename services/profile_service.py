@@ -1,151 +1,3 @@
-# from datetime import datetime
-# from database.db import get_user_appointments
-
-
-# WEEKDAYS = {
-#     "Monday", "Tuesday", "Wednesday",
-#     "Thursday", "Friday", "Saturday", "Sunday"
-# }
-
-
-# def get_user_appointment_summary(user_id: int):
-#     appointments = get_user_appointments(user_id)
-
-#     upcoming = []
-#     past = []
-
-#     now = datetime.now()
-
-#     # =================================================
-#     # ❌ OLD LOOP (COMMENTED — DO NOT DELETE)
-#     # -------------------------------------------------
-#     # for appt in appointments:
-#     #     appt = list(appt)
-#     #
-#     #     date = None
-#     #     time = None
-#     #     doctor = None
-#     #     weekday = None
-#     # =================================================
-
-#     for appt in appointments:
-#         appt = list(appt)
-
-#         # =================================================
-#         # ✅ MODIFICATION: Extract appointment ID
-#         # -------------------------------------------------
-#         # This ID is REQUIRED for cancel functionality
-#         # =================================================
-#         appointment_id = None
-#         for item in appt:
-#             if isinstance(item, int):
-#                 appointment_id = item
-#                 break
-
-#         date = None
-#         time = None
-#         doctor = None
-#         weekday = None
-
-#         for item in appt:
-#             if not isinstance(item, str):
-#                 continue
-
-#             # ✅ calendar date (YYYY-MM-DD)
-#             if "-" in item and len(item) == 10:
-#                 date = item
-
-#             # ✅ time slot
-#             elif ":" in item:
-#                 time = item
-
-#             # ✅ weekday name
-#             elif item in WEEKDAYS:
-#                 weekday = item
-
-#             # ✅ doctor name (first unmatched string)
-#             elif doctor is None:
-#                 doctor = item
-
-#         # =================================================
-#         # ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
-#         # -------------------------------------------------
-#         # if not date or not time:
-#         #     continue
-#         # =================================================
-
-#         # =================================================
-#         # ✅ FIX: show weekday-based bookings
-#         # =================================================
-#         if not date:
-#             if weekday:
-#                 upcoming.append({
-#                     # ❌ OLD (NO ID — COMMENTED)
-#                     # "doctor": doctor or "Unknown",
-#                     # "date": weekday,
-#                     # "time": time or "N/A"
-
-#                     # ✅ MODIFICATION: include appointment ID
-#                     "id": appointment_id,
-#                     "doctor": doctor or "Unknown",
-#                     "date": weekday,
-#                     "time": time or "N/A"
-#                 })
-#             continue
-
-#         try:
-#             appt_datetime = datetime.strptime(
-#                 f"{date} {time[:5]}",
-#                 "%Y-%m-%d %H:%M"
-#             )
-#         except Exception:
-#             continue
-
-#         # =================================================
-#         # ❌ OLD RECORD (COMMENTED — DO NOT DELETE)
-#         # -------------------------------------------------
-#         # record = {
-#         #     "doctor": doctor or "Unknown",
-#         #     "date": date,
-#         #     "time": time
-#         # }
-#         # =================================================
-
-#         # =================================================
-#         # ✅ MODIFICATION: record WITH appointment ID
-#         # -------------------------------------------------
-#         # This FIXES the "Invalid appointment" issue
-#         # =================================================
-#         record = {
-#             "id": appointment_id,        # 🔥 REQUIRED
-#             "doctor": doctor or "Unknown",
-#             "date": date,
-#             "time": time
-#         }
-
-#         if appt_datetime >= now:
-#             upcoming.append(record)
-#         else:
-#             past.append(record)
-
-#     return {
-#         "upcoming": upcoming,
-#         "past": past
-#     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from datetime import datetime
 
 # =================================================
@@ -168,12 +20,34 @@ WEEKDAYS = {
     "Thursday", "Friday", "Saturday", "Sunday"
 }
 
+def get_user_profile_appointments(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            id,
+            doctor,
+            date,
+            time,
+            created_at
+        FROM appointments
+        WHERE user_id = ?
+          AND status = 'booked'
+        ORDER BY created_at DESC
+    """, (user_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
 
 # =================================================
 # ✅ EXISTING FUNCTION (UNCHANGED STRUCTURE)
 # =================================================
 def get_user_appointment_summary(user_id: int):
-    appointments = get_user_appointments(user_id)
+    # appointments = get_user_appointments(user_id)
+    appointments = get_user_profile_appointments(user_id)
 
     upcoming = []
     past = []
@@ -196,6 +70,19 @@ def get_user_appointment_summary(user_id: int):
         appt = list(appt)
 
         # =================================================
+        # ✅ EXPLICIT COLUMN MAPPING (NO GUESSING)
+        # -------------------------------------------------
+        # SQL order:
+        # (id, doctor, date, time, created_at)
+        # =================================================
+        appointment_id = appt[0]
+        doctor = appt[1]
+        day = appt[2]      # weekday like "Monday"
+        time = appt[3]     # slot like "10:00-11:00"
+        # created_at = appt[4]  # NOT used for display
+
+
+        # =================================================
         # ✅ MODIFICATION: Extract appointment ID
         # -------------------------------------------------
         # This ID is REQUIRED for cancel functionality
@@ -206,30 +93,30 @@ def get_user_appointment_summary(user_id: int):
                 appointment_id = item
                 break
 
-        date = None
-        time = None
-        doctor = None
-        weekday = None
+        # date = None
+        # time = None
+        # doctor = None
+        # weekday = None
 
-        for item in appt:
-            if not isinstance(item, str):
-                continue
+        # for item in appt:
+        #     if not isinstance(item, str):
+        #         continue
 
-            # ✅ calendar date (YYYY-MM-DD)
-            if "-" in item and len(item) == 10:
-                date = item
+        #     # ✅ calendar date (YYYY-MM-DD)
+        #     if "-" in item and len(item) == 10:
+        #         date = item
 
-            # ✅ time slot
-            elif ":" in item:
-                time = item
+        #     # ✅ time slot
+        #     elif ":" in item:
+        #         time = item
 
-            # ✅ weekday name
-            elif item in WEEKDAYS:
-                weekday = item
+        #     # ✅ weekday name
+        #     elif item in WEEKDAYS:
+        #         weekday = item
 
-            # ✅ doctor name (first unmatched string)
-            elif doctor is None:
-                doctor = item
+        #     # ✅ doctor name (first unmatched string)
+        #     elif doctor is None:
+        #         doctor = item
 
         # =================================================
         # ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
@@ -241,29 +128,29 @@ def get_user_appointment_summary(user_id: int):
         # =================================================
         # ✅ FIX: show weekday-based bookings
         # =================================================
-        if not date:
-            if weekday:
-                upcoming.append({
-                    # ❌ OLD (NO ID — COMMENTED)
-                    # "doctor": doctor or "Unknown",
-                    # "date": weekday,
-                    # "time": time or "N/A"
+        # if not date:
+        #     if weekday:
+        #         upcoming.append({
+        #             # ❌ OLD (NO ID — COMMENTED)
+        #             # "doctor": doctor or "Unknown",
+        #             # "date": weekday,
+        #             # "time": time or "N/A"
 
-                    # ✅ MODIFICATION: include appointment ID
-                    "id": appointment_id,
-                    "doctor": doctor or "Unknown",
-                    "date": weekday,
-                    "time": time or "N/A"
-                })
-            continue
+        #             # ✅ MODIFICATION: include appointment ID
+        #             "id": appointment_id,
+        #             "doctor": doctor or "Unknown",
+        #             "date": weekday,
+        #             "time": time or "N/A"
+        #         })
+        #     continue
 
-        try:
-            appt_datetime = datetime.strptime(
-                f"{date} {time[:5]}",
-                "%Y-%m-%d %H:%M"
-            )
-        except Exception:
-            continue
+        # try:
+        #     appt_datetime = datetime.strptime(
+        #         f"{date} {time[:5]}",
+        #         "%Y-%m-%d %H:%M"
+        #     )
+        # except Exception:
+        #     continue
 
         # =================================================
         # ❌ OLD RECORD (COMMENTED — DO NOT DELETE)
@@ -280,17 +167,27 @@ def get_user_appointment_summary(user_id: int):
         # -------------------------------------------------
         # This FIXES the "Invalid appointment" issue
         # =================================================
-        record = {
-            "id": appointment_id,        # 🔥 REQUIRED
-            "doctor": doctor or "Unknown",
-            "date": date,
-            "time": time
-        }
+        # record = {
+        #     "id": appointment_id,        # 🔥 REQUIRED
+        #     "doctor": doctor or "Unknown",
+        #     "date": date,
+        #     "time": time
+        # }
 
-        if appt_datetime >= now:
-            upcoming.append(record)
-        else:
-            past.append(record)
+        record = {
+        "id": appointment_id,
+        "doctor": doctor or "Unknown",
+        "date": day,
+        "time": time
+    }
+
+
+        # if appt_datetime >= now:
+        #     upcoming.append(record)
+        # else:
+        #     past.append(record)
+
+        upcoming.append(record)
 
     return {
         "upcoming": upcoming,
