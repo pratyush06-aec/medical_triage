@@ -152,23 +152,39 @@ async function signup() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
-    const res = await fetch("/auth/register", {
+    // 1️⃣ Register
+    const registerRes = await fetch("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",   // ✅ REQUIRED
+        credentials: "include",
         body: JSON.stringify({ email, password })
     });
 
-    const data = await res.json();
+    const registerData = await registerRes.json();
 
-    if (data.error) {
-        alert(data.error);
+    if (registerData.error) {
+        alert(registerData.error);
         return;
     }
 
-    // 🔧 MODIFICATION:
-    // Auto-login behavior NOT assumed
-    // User explicitly logs in after signup
-    alert("Signup successful. Please login.");
+    // 2️⃣ IMMEDIATELY login (guaranteed session)
+    const loginRes = await fetch("/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password })
+    });
+
+    const loginData = await loginRes.json();
+
+    if (loginData.error) {
+        alert("Signup succeeded, but login failed. Please login manually.");
+        return;
+    }
+
+    // 3️⃣ Enter app
+    window.location.href = "/";
 }
+
+
 
