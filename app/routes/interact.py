@@ -270,11 +270,16 @@ SPECIALTY_MAP = {
 }
 
 
-def format_doctor_list(doctors):
+def format_doctor_list(doctors, show_index=True):
     text = ""
     for i, d in enumerate(doctors, 1):
-        days = ", ".join(d["schedule"].keys())
-        text += f"{i}. {d['name']} ({days})\n"
+        specialty = d.get("specialty", "").replace("_", " ").title()
+
+        if show_index:
+            text += f"{i}. {d['name']} ({specialty})\n"
+        else:
+            text += f"{d['name']} ({specialty})\n"
+
     return text
 
 
@@ -380,6 +385,11 @@ def interact(req: ChatRequest, request: Request):
             ctx["doctor"] = ctx["available_doctors"][0]
             ctx["pending_confirmation"] = "doctor"
             ctx["awaiting"] = "confirm_single"
+            doctor_list = format_doctor_list(
+                ctx["available_doctors"],
+                show_index=False
+            )
+
             return {
                 "reply": (
                     "Available doctor:\n\n"
@@ -387,6 +397,11 @@ def interact(req: ChatRequest, request: Request):
                     "Only one doctor is available. Continue? (yes/no)"
                 )
             }
+        
+        doctor_list = format_doctor_list(
+            ctx["available_doctors"],
+            show_index=True
+        )
 
         ctx["awaiting"] = "doctor_selection"
         return {"reply": "Available doctors:\n\n" + doctor_list}
