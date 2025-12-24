@@ -563,11 +563,6 @@ function renderAppointments(...) {}
  * ✅ PROFILE RENDERER (FINAL — SEPARATE VIEW)
  *************************************************/
 function renderProfile(data) {
-    /*
-     * 🔧 MODIFICATION:
-     * Render into #profileContent
-     * NOT chat-view or mainContent
-     */
     const container = document.getElementById("profileContent");
 
     container.innerHTML = `
@@ -575,9 +570,21 @@ function renderProfile(data) {
         <ul class="mb-4">
             ${
                 data.upcoming.length
-                    ? data.upcoming.map(a =>
-                        `<li>${a.doctor} — ${a.date} ${a.time}</li>`
-                      ).join("")
+                    ? data.upcoming.map(a => {
+                            const apptId = a.appointment_id ?? a.id;
+
+                            return `
+                                <li class="flex items-center justify-between mb-2">
+                                    <span>${a.doctor} — ${a.date} ${a.time}</span>
+                                    <button
+                                        class="text-sm bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                                        onclick="cancelFromProfile(${apptId})">
+                                        Cancel
+                                    </button>
+                                </li>
+                            `;
+                        }).join("")
+
                     : "<li>No upcoming appointments</li>"
             }
         </ul>
@@ -593,6 +600,36 @@ function renderProfile(data) {
             }
         </ul>
     `;
+}
+
+async function cancelFromProfile(appointmentId) {
+    if (!appointmentId) return;
+
+    const confirmCancel = confirm(
+        "Are you sure you want to cancel this appointment?"
+    );
+    if (!confirmCancel) return;
+
+    const res = await fetch(
+        `/auth/profile/cancel/${appointmentId}`,
+        {
+            method: "POST",
+            credentials: "include"
+        }
+    );
+
+    if (!res.ok) {
+        alert("Failed to cancel appointment");
+        return;
+    }
+
+    // Reload profile data safely
+    const refreshed = await fetch("/auth/profile/appointments", {
+        credentials: "include"
+    });
+    const data = await refreshed.json();
+
+    renderProfile(data);
 }
 
 

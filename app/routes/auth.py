@@ -95,6 +95,8 @@ from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from services.auth_service import register, login
 from services.profile_service import get_user_appointment_summary
+from database.db import cancel_appointment_db
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -267,3 +269,28 @@ def profile_appointments(request: Request):
 
     summary = get_user_appointment_summary(user["id"])
     return summary
+
+# =================================================
+# PROFILE APPOINTMENT CANCEL (AUTH-GUARDED)
+# =================================================
+@router.post("/profile/cancel/{appointment_id}")
+def cancel_profile_appointment(appointment_id: int, request: Request):
+    user = request.session.get("user")
+
+    print("CANCEL DEBUG → appointment_id:", appointment_id)
+    print("CANCEL DEBUG → user_id:", user["id"])
+
+    success = cancel_appointment_db(
+        appointment_id=appointment_id,
+        user_id=user["id"]
+    )
+
+    print("CANCEL DEBUG → success:", success)
+
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Appointment not found / not owned / not booked"
+        )
+
+    return {"ok": True}

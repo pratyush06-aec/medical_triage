@@ -196,15 +196,27 @@ def get_user_appointment_summary(user_id: int):
         appt = list(appt)
 
         # =================================================
-        # ✅ MODIFICATION: Extract appointment ID
+        # ✅ MODIFICATION: Extract appointment ID + status
         # -------------------------------------------------
-        # This ID is REQUIRED for cancel functionality
+        # ID is REQUIRED for cancel functionality
+        # Status is REQUIRED to hide cancelled appointments
         # =================================================
         appointment_id = None
+        status = None
+
         for item in appt:
             if isinstance(item, int):
                 appointment_id = item
-                break
+            elif isinstance(item, str) and item.lower() in ("booked", "cancelled"):
+                status = item.lower()
+
+        # =================================================
+        # 🔴 CRITICAL FIX
+        # -------------------------------------------------
+        # Cancelled appointments MUST NOT appear in profile
+        # =================================================
+        if status != "booked":
+            continue
 
         date = None
         time = None
@@ -281,7 +293,7 @@ def get_user_appointment_summary(user_id: int):
         # This FIXES the "Invalid appointment" issue
         # =================================================
         record = {
-            "id": appointment_id,        # 🔥 REQUIRED
+            "id": appointment_id,
             "doctor": doctor or "Unknown",
             "date": date,
             "time": time
