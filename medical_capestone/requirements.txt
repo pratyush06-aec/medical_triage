@@ -6,3 +6,4 @@ uvicorn
 fastapi
 pydantic
 itsdangerous
+jinja2
