@@ -433,6 +433,8 @@ def interact(req: ChatRequest, request: Request):
 
         elif step == "time":
             ctx["awaiting"] = "name"
+            return {"reply": "Please enter patient name."}
+
 
     # ================= DOCTOR SELECTION =================
     if ctx["awaiting"] == "doctor_selection":
@@ -508,11 +510,13 @@ def interact(req: ChatRequest, request: Request):
 
     # ================= TIME SELECTION =================
     if ctx["awaiting"] == "time_selection":
-        if msg not in [s.replace(" ", "") for s in ctx["available_slots"]]:
-            return {"reply": "Please choose a time from the list."}
-        ctx["time"] = ctx["available_slots"][0]
-        ctx["awaiting"] = "name"
+        normalized = [s.replace(" ", "") for s in ctx["available_slots"]]
 
+        if msg not in normalized:
+            return {"reply": "Please choose a time from the list."}
+
+        ctx["time"] = ctx["available_slots"][normalized.index(msg)]
+        ctx["awaiting"] = "name"
     # ================= FINAL =================
     if ctx["awaiting"] == "name":
         _, reply = book_appointment_with_user(user_id, {
