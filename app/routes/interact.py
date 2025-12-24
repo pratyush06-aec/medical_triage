@@ -149,135 +149,135 @@
 #         booking_context.pop(user_id, None)
 #         return {"reply": "Okay. Take care."}
 
-#     # =================================================
-#     # AREA HANDLER
-#     # =================================================
-#     # =================================================
-#     # AREA HANDLER — NORMALIZATION FIX (CRITICAL)
-#     # =================================================
-#     if ctx["awaiting"] == "area":
+    # # =================================================
+    # # AREA HANDLER
+    # # =================================================
+    # # =================================================
+    # # AREA HANDLER — NORMALIZATION FIX (CRITICAL)
+    # # =================================================
+    # if ctx["awaiting"] == "area":
 
-#         # 🔧 FIX: normalize area ONCE
-#         ctx["area"] = msg.strip().lower().replace(" ", "_")
+    #     # 🔧 FIX: normalize area ONCE
+    #     ctx["area"] = msg.strip().lower().replace(" ", "_")
 
-#         catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
+    #     catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
 
 
-#         if catalog_reply.get("type") == "fallback_offer":
-#             ctx["fallback_specialty"] = catalog_reply["fallback_specialty"]
-#             ctx["awaiting"] = "fallback_consent"
-#             return {
-#                 "reply": (
-#                     f"No {ctx['specialty']} found in {ctx['area'].title()}.\n"
-#                     f"Consult {ctx['fallback_specialty']} instead? (yes/no)"
-#                 )
-#             }
+    #     if catalog_reply.get("type") == "fallback_offer":
+    #         ctx["fallback_specialty"] = catalog_reply["fallback_specialty"]
+    #         ctx["awaiting"] = "fallback_consent"
+    #         return {
+    #             "reply": (
+    #                 f"No {ctx['specialty']} found in {ctx['area'].title()}.\n"
+    #                 f"Consult {ctx['fallback_specialty']} instead? (yes/no)"
+    #             )
+    #         }
 
-#         ctx["available_doctors"] = catalog_reply["doctors"]
-#         ctx["awaiting"] = "doctor_selection"
-#         return {
-#             "reply": (
-#                 "🩺 Available Doctors:\n\n"
-#                 f"{format_doctor_list(ctx['available_doctors'])}\n"
-#                 "Please choose a doctor by number."
-#             )
-#         }
+    #     ctx["available_doctors"] = catalog_reply["doctors"]
+    #     ctx["awaiting"] = "doctor_selection"
+    #     return {
+    #         "reply": (
+    #             "🩺 Available Doctors:\n\n"
+    #             f"{format_doctor_list(ctx['available_doctors'])}\n"
+    #             "Please choose a doctor by number."
+    #         )
+    #     }
 
-#     # =================================================
-#     # 🔁 FALLBACK CONSENT HANDLER (CRITICAL FIX)
-#     # =================================================
-#     if ctx["awaiting"] == "fallback_consent":
-#         if msg not in ("yes", "no"):
-#             return {"reply": "Please answer yes or no."}
+    # # =================================================
+    # # 🔁 FALLBACK CONSENT HANDLER (CRITICAL FIX)
+    # # =================================================
+    # if ctx["awaiting"] == "fallback_consent":
+    #     if msg not in ("yes", "no"):
+    #         return {"reply": "Please answer yes or no."}
 
-#         if msg == "no":
-#             booking_context.pop(user_id, None)
-#             return {"reply": "Okay, booking cancelled."}
+    #     if msg == "no":
+    #         booking_context.pop(user_id, None)
+    #         return {"reply": "Okay, booking cancelled."}
 
-#         ctx["specialty"] = ctx["fallback_specialty"]
-#         ctx["awaiting"] = "doctor_selection"
+    #     ctx["specialty"] = ctx["fallback_specialty"]
+    #     ctx["awaiting"] = "doctor_selection"
 
-#         catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
-#         doctors = catalog_reply.get("doctors", [])
+    #     catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
+    #     doctors = catalog_reply.get("doctors", [])
 
-#         if not doctors:
-#             booking_context.pop(user_id, None)
-#             return {"reply": "No doctors available. Please try later."}
+    #     if not doctors:
+    #         booking_context.pop(user_id, None)
+    #         return {"reply": "No doctors available. Please try later."}
 
-#         ctx["available_doctors"] = doctors
+    #     ctx["available_doctors"] = doctors
 
-#         return {
-#             "reply": (
-#                 f"🩺 Available {ctx['specialty']} doctors:\n\n"
-#                 f"{format_doctor_list(doctors)}\n"
-#                 "Please choose a doctor number."
-#             )
-#         }
+    #     return {
+    #         "reply": (
+    #             f"🩺 Available {ctx['specialty']} doctors:\n\n"
+    #             f"{format_doctor_list(doctors)}\n"
+    #             "Please choose a doctor number."
+    #         )
+    #     }
 
-#     # =================================================
-#     # DOCTOR SELECTION
-#     # =================================================
-#     if ctx["awaiting"] == "doctor_selection":
-#         if not msg.isdigit():
-#             return {"reply": "Please choose a valid doctor number."}
-#         try:
-#             ctx["doctor"] = ctx["available_doctors"][int(msg) - 1]
-#         except IndexError:
-#             return {"reply": "Invalid doctor selection."}
-#         ctx["awaiting"] = "day_selection"
-#         return {"reply": f"You selected {ctx['doctor']['name']}. Please choose a day."}
+    # # =================================================
+    # # DOCTOR SELECTION
+    # # =================================================
+    # if ctx["awaiting"] == "doctor_selection":
+    #     if not msg.isdigit():
+    #         return {"reply": "Please choose a valid doctor number."}
+    #     try:
+    #         ctx["doctor"] = ctx["available_doctors"][int(msg) - 1]
+    #     except IndexError:
+    #         return {"reply": "Invalid doctor selection."}
+    #     ctx["awaiting"] = "day_selection"
+    #     return {"reply": f"You selected {ctx['doctor']['name']}. Please choose a day."}
 
-#     # =================================================
-#     # DAY SELECTION
-#     # =================================================
-#     if ctx["awaiting"] == "day_selection":
-#         day = msg.title()
-#         slots = ctx["doctor"]["schedule"].get(day)
-#         if not slots:
-#             return {"reply": "Please choose a valid day from the schedule."}
+    # # =================================================
+    # # DAY SELECTION
+    # # =================================================
+    # if ctx["awaiting"] == "day_selection":
+    #     day = msg.title()
+    #     slots = ctx["doctor"]["schedule"].get(day)
+    #     if not slots:
+    #         return {"reply": "Please choose a valid day from the schedule."}
 
-#         booked = get_unavailable_slots(ctx["doctor"]["name"], day)
-#         ctx["available_slots"] = [s for s in slots if s not in booked]
+    #     booked = get_unavailable_slots(ctx["doctor"]["name"], day)
+    #     ctx["available_slots"] = [s for s in slots if s not in booked]
 
-#         if not ctx["available_slots"]:
-#             return {"reply": f"No available slots on {day}. Choose another day."}
+    #     if not ctx["available_slots"]:
+    #         return {"reply": f"No available slots on {day}. Choose another day."}
 
-#         ctx["day"] = day
-#         ctx["awaiting"] = "time_selection"
-#         return {
-#             "reply": (
-#                 f"Available slots on {day}:\n\n"
-#                 f"{', '.join(ctx['available_slots'])}\n\n"
-#                 "Please choose a time slot."
-#             )
-#         }
+    #     ctx["day"] = day
+    #     ctx["awaiting"] = "time_selection"
+    #     return {
+    #         "reply": (
+    #             f"Available slots on {day}:\n\n"
+    #             f"{', '.join(ctx['available_slots'])}\n\n"
+    #             "Please choose a time slot."
+    #         )
+    #     }
 
-#     # =================================================
-#     # TIME SELECTION
-#     # =================================================
-#     if ctx["awaiting"] == "time_selection":
-#         user_time = msg.replace(" ", "")
-#         normalized = [s.replace(" ", "") for s in ctx["available_slots"]]
-#         if user_time not in normalized:
-#             return {"reply": "Please choose a valid available time slot."}
+    # # =================================================
+    # # TIME SELECTION
+    # # =================================================
+    # if ctx["awaiting"] == "time_selection":
+    #     user_time = msg.replace(" ", "")
+    #     normalized = [s.replace(" ", "") for s in ctx["available_slots"]]
+    #     if user_time not in normalized:
+    #         return {"reply": "Please choose a valid available time slot."}
 
-#         ctx["time"] = ctx["available_slots"][normalized.index(user_time)]
-#         ctx["awaiting"] = "name"
-#         return {"reply": "Please enter patient name."}
+    #     ctx["time"] = ctx["available_slots"][normalized.index(user_time)]
+    #     ctx["awaiting"] = "name"
+    #     return {"reply": "Please enter patient name."}
 
-#     # =================================================
-#     # FINAL BOOKING
-#     # =================================================
-#     if ctx["awaiting"] == "name":
-#         ctx["patient_name"] = msg.title()
-#         _, reply = book_appointment_with_user(user_id, {
-#             "patient_name": ctx["patient_name"],
-#             "doctor": ctx["doctor"]["name"],
-#             "date": ctx["day"],
-#             "time": ctx["time"]
-#         })
-#         booking_context.pop(user_id, None)
-#         return {"reply": reply}
+    # # =================================================
+    # # FINAL BOOKING
+    # # =================================================
+    # if ctx["awaiting"] == "name":
+    #     ctx["patient_name"] = msg.title()
+    #     _, reply = book_appointment_with_user(user_id, {
+    #         "patient_name": ctx["patient_name"],
+    #         "doctor": ctx["doctor"]["name"],
+    #         "date": ctx["day"],
+    #         "time": ctx["time"]
+    #     })
+    #     booking_context.pop(user_id, None)
+    #     return {"reply": reply}
 
 #     # =================================================
 #     # RESCHEDULE & CANCEL FLOWS (UNCHANGED, PRESERVED)
@@ -437,10 +437,23 @@ def interact(req: ChatRequest, request: Request):
     if ctx["awaiting"] == "action_selection":
 
         if msg == "1":
+            # ✅ FIX: clean only booking-related fields, keep ctx intact
             ctx["mode"] = "book"
             ctx["awaiting"] = "booking_consent"
-            return {"reply": "Would you like to book an appointment? (yes/no)"}
 
+            ctx["patient_name"] = None
+            ctx["doctor"] = None
+            ctx["time"] = None
+            ctx["day"] = None
+            ctx["available_doctors"] = None
+            ctx["available_slots"] = None
+            ctx["appointments"] = None
+            ctx["selected_appointment"] = None
+            ctx["rescheduling"] = False
+            ctx["area"] = None
+
+            return {"reply": "Would you like to book an appointment? (yes/no)"}
+        
         elif msg == "2":
             ctx["mode"] = "reschedule"
             ctx["awaiting"] = "reschedule_name"
@@ -475,6 +488,152 @@ def interact(req: ChatRequest, request: Request):
             return {"reply": reply}
 
         return {"reply": "Please choose 1, 2, or 3."}
+    
+
+    # =================================================
+    # BOOKING CONSENT
+    # =================================================
+    if ctx["awaiting"] == "booking_consent":
+
+        if msg in ("yes", "y"):
+            ctx["awaiting"] = "area"
+            return {"reply": "Please tell me your area of residence."}
+
+        if msg in ("no", "n"):
+            booking_context.pop(user_id, None)
+            return {"reply": "Okay. Take care."}
+
+        return {"reply": "Please reply with yes or no."}
+    
+      # =================================================
+    # AREA HANDLER
+    # =================================================
+    # =================================================
+    # AREA HANDLER — NORMALIZATION FIX (CRITICAL)
+    # =================================================
+    if ctx["awaiting"] == "area":
+
+        # 🔧 FIX: normalize area ONCE
+        ctx["area"] = msg.strip().lower().replace(" ", "_")
+
+        catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
+
+
+        if catalog_reply.get("type") == "fallback_offer":
+            ctx["fallback_specialty"] = catalog_reply["fallback_specialty"]
+            ctx["awaiting"] = "fallback_consent"
+            return {
+                "reply": (
+                    f"No {ctx['specialty']} found in {ctx['area'].title()}.\n"
+                    f"Consult {ctx['fallback_specialty']} instead? (yes/no)"
+                )
+            }
+
+        ctx["available_doctors"] = catalog_reply["doctors"]
+        ctx["awaiting"] = "doctor_selection"
+        return {
+            "reply": (
+                "🩺 Available Doctors:\n\n"
+                f"{format_doctor_list(ctx['available_doctors'])}\n"
+                "Please choose a doctor by number."
+            )
+        }
+
+    # =================================================
+    # 🔁 FALLBACK CONSENT HANDLER (CRITICAL FIX)
+    # =================================================
+    if ctx["awaiting"] == "fallback_consent":
+        if msg not in ("yes", "no"):
+            return {"reply": "Please answer yes or no."}
+
+        if msg == "no":
+            booking_context.pop(user_id, None)
+            return {"reply": "Okay, booking cancelled."}
+
+        ctx["specialty"] = ctx["fallback_specialty"]
+        ctx["awaiting"] = "doctor_selection"
+
+        catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
+        doctors = catalog_reply.get("doctors", [])
+
+        if not doctors:
+            booking_context.pop(user_id, None)
+            return {"reply": "No doctors available. Please try later."}
+
+        ctx["available_doctors"] = doctors
+
+        return {
+            "reply": (
+                f"🩺 Available {ctx['specialty']} doctors:\n\n"
+                f"{format_doctor_list(doctors)}\n"
+                "Please choose a doctor number."
+            )
+        }
+
+    # =================================================
+    # DOCTOR SELECTION
+    # =================================================
+    if ctx["awaiting"] == "doctor_selection":
+        if not msg.isdigit():
+            return {"reply": "Please choose a valid doctor number."}
+        try:
+            ctx["doctor"] = ctx["available_doctors"][int(msg) - 1]
+        except IndexError:
+            return {"reply": "Invalid doctor selection."}
+        ctx["awaiting"] = "day_selection"
+        return {"reply": f"You selected {ctx['doctor']['name']}. Please choose a day."}
+
+    # =================================================
+    # DAY SELECTION
+    # =================================================
+    if ctx["awaiting"] == "day_selection":
+        day = msg.title()
+        slots = ctx["doctor"]["schedule"].get(day)
+        if not slots:
+            return {"reply": "Please choose a valid day from the schedule."}
+
+        booked = get_unavailable_slots(ctx["doctor"]["name"], day)
+        ctx["available_slots"] = [s for s in slots if s not in booked]
+
+        if not ctx["available_slots"]:
+            return {"reply": f"No available slots on {day}. Choose another day."}
+
+        ctx["day"] = day
+        ctx["awaiting"] = "time_selection"
+        return {
+            "reply": (
+                f"Available slots on {day}:\n\n"
+                f"{', '.join(ctx['available_slots'])}\n\n"
+                "Please choose a time slot."
+            )
+        }
+
+    # =================================================
+    # TIME SELECTION
+    # =================================================
+    if ctx["awaiting"] == "time_selection":
+        user_time = msg.replace(" ", "")
+        normalized = [s.replace(" ", "") for s in ctx["available_slots"]]
+        if user_time not in normalized:
+            return {"reply": "Please choose a valid available time slot."}
+
+        ctx["time"] = ctx["available_slots"][normalized.index(user_time)]
+        ctx["awaiting"] = "name"
+        return {"reply": "Please enter patient name."}
+    
+        # =================================================
+    # FINAL BOOKING
+    # =================================================
+    if ctx["awaiting"] == "name":
+        ctx["patient_name"] = msg.title()
+        _, reply = book_appointment_with_user(user_id, {
+            "patient_name": ctx["patient_name"],
+            "doctor": ctx["doctor"]["name"],
+            "date": ctx["day"],
+            "time": ctx["time"]
+        })
+        booking_context.pop(user_id, None)
+        return {"reply": reply}
 
     # =================================================
     # ✅ MODIFICATION: CANCEL — SELECT APPOINTMENT
