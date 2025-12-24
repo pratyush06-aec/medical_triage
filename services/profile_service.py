@@ -16,8 +16,31 @@
 
 #     now = datetime.now()
 
+#     # =================================================
+#     # ❌ OLD LOOP (COMMENTED — DO NOT DELETE)
+#     # -------------------------------------------------
+#     # for appt in appointments:
+#     #     appt = list(appt)
+#     #
+#     #     date = None
+#     #     time = None
+#     #     doctor = None
+#     #     weekday = None
+#     # =================================================
+
 #     for appt in appointments:
 #         appt = list(appt)
+
+#         # =================================================
+#         # ✅ MODIFICATION: Extract appointment ID
+#         # -------------------------------------------------
+#         # This ID is REQUIRED for cancel functionality
+#         # =================================================
+#         appointment_id = None
+#         for item in appt:
+#             if isinstance(item, int):
+#                 appointment_id = item
+#                 break
 
 #         date = None
 #         time = None
@@ -45,10 +68,11 @@
 #                 doctor = item
 
 #         # =================================================
-#         # ❌ OLD (weekday bookings were dropped)
-#         # =================================================
+#         # ❌ OLD LOGIC (COMMENTED — DO NOT DELETE)
+#         # -------------------------------------------------
 #         # if not date or not time:
 #         #     continue
+#         # =================================================
 
 #         # =================================================
 #         # ✅ FIX: show weekday-based bookings
@@ -56,6 +80,13 @@
 #         if not date:
 #             if weekday:
 #                 upcoming.append({
+#                     # ❌ OLD (NO ID — COMMENTED)
+#                     # "doctor": doctor or "Unknown",
+#                     # "date": weekday,
+#                     # "time": time or "N/A"
+
+#                     # ✅ MODIFICATION: include appointment ID
+#                     "id": appointment_id,
 #                     "doctor": doctor or "Unknown",
 #                     "date": weekday,
 #                     "time": time or "N/A"
@@ -70,7 +101,23 @@
 #         except Exception:
 #             continue
 
+#         # =================================================
+#         # ❌ OLD RECORD (COMMENTED — DO NOT DELETE)
+#         # -------------------------------------------------
+#         # record = {
+#         #     "doctor": doctor or "Unknown",
+#         #     "date": date,
+#         #     "time": time
+#         # }
+#         # =================================================
+
+#         # =================================================
+#         # ✅ MODIFICATION: record WITH appointment ID
+#         # -------------------------------------------------
+#         # This FIXES the "Invalid appointment" issue
+#         # =================================================
 #         record = {
+#             "id": appointment_id,        # 🔥 REQUIRED
 #             "doctor": doctor or "Unknown",
 #             "date": date,
 #             "time": time
@@ -85,6 +132,22 @@
 #         "upcoming": upcoming,
 #         "past": past
 #     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -134,15 +197,27 @@ def get_user_appointment_summary(user_id: int):
         appt = list(appt)
 
         # =================================================
-        # ✅ MODIFICATION: Extract appointment ID
+        # ✅ MODIFICATION: Extract appointment ID + status
         # -------------------------------------------------
-        # This ID is REQUIRED for cancel functionality
+        # ID is REQUIRED for cancel functionality
+        # Status is REQUIRED to hide cancelled appointments
         # =================================================
         appointment_id = None
+        status = None
+
         for item in appt:
             if isinstance(item, int):
                 appointment_id = item
-                break
+            elif isinstance(item, str) and item.lower() in ("booked", "cancelled"):
+                status = item.lower()
+
+        # =================================================
+        # 🔴 CRITICAL FIX
+        # -------------------------------------------------
+        # Cancelled appointments MUST NOT appear in profile
+        # =================================================
+        if status != "booked":
+            continue
 
         date = None
         time = None
@@ -219,7 +294,7 @@ def get_user_appointment_summary(user_id: int):
         # This FIXES the "Invalid appointment" issue
         # =================================================
         record = {
-            "id": appointment_id,        # 🔥 REQUIRED
+            "id": appointment_id,
             "doctor": doctor or "Unknown",
             "date": date,
             "time": time

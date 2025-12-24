@@ -47,6 +47,7 @@
 
 
 
+console.log("✅ profile.js loaded");
 
 
 document.addEventListener("DOMContentLoaded", loadAppointments);
@@ -62,6 +63,7 @@ async function loadAppointments() {
   }
 
   const data = await res.json();
+  console.log("📦 profile data:", data);
   render("upcoming-appointments", data.upcoming);
   render("past-appointments", data.past);
 }
@@ -139,7 +141,7 @@ async function cancelAppointment(appointmentId) {
 
   if (!confirmCancel) return;
 
-  const res = await fetch(`/booking/cancel/${appointmentId}`, {
+  const res = await fetch(`/auth/profile/cancel/${appointmentId}`, {
     method: "POST",
     credentials: "include"
   });
@@ -151,11 +153,12 @@ async function cancelAppointment(appointmentId) {
 
   const data = await res.json();
 
-  if (data.success) {
+  if (data.ok) {
     alert("Appointment cancelled");
-    location.reload(); // simple & safe refresh
+    location.reload();
   } else {
     alert("Could not cancel appointment");
   }
 }
+
 
