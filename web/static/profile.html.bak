@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Appointments</title>
+  <script defer src="/static/profile.js"></script>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>My Appointments</h2>
+
+    <!-- ===============================
+         NEW: Add Appointment Section
+         =============================== -->
+    <button id="add-appointment-btn">➕ Add Appointment</button>
+
+    <div id="add-appointment-form" style="display:none; margin-top:16px;">
+      <h3>Add Appointment</h3>
+
+      <input
+        type="text"
+        id="patient-name"
+        placeholder="Patient Name"
+      />
+
+      <input
+        type="text"
+        id="doctor-name"
+        placeholder="Doctor Name"
+      />
+
+      <input
+        type="text"
+        id="day"
+        placeholder="Day (e.g. Monday)"
+      />
+
+      <input
+        type="text"
+        id="time"
+        placeholder="Time (e.g. 10:00-11:00)"
+      />
+
+      <button id="submit-appointment">Book Appointment</button>
+    </div>
+
+    <hr />
+
+    <!-- ===============================
+         EXISTING: Upcoming Appointments
+         (UNCHANGED)
+         =============================== -->
+    <h3>Upcoming</h3>
+    <ul id="upcoming-appointments"></ul>
+
+    <!-- ===============================
+         EXISTING: Past Appointments
+         (UNCHANGED)
+         =============================== -->
+    <h3>Past</h3>
+    <ul id="past-appointments"></ul>
+
+    <!-- ===============================
+         EXISTING: Back Button
+         (UNCHANGED)
+         =============================== -->
+    <button onclick="goBack()">⬅ Back to Chat</button>
+  </div>
+</body>
+</html>

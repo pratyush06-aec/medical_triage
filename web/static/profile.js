@@ -1,3 +1,55 @@
+// document.addEventListener("DOMContentLoaded", loadAppointments);
+
+// async function loadAppointments() {
+//   const res = await fetch("/auth/profile/appointments", {
+//     credentials: "include"
+//   });
+
+//   if (res.status === 401) {
+//     window.location.href = "/static/auth.html";
+//     return;
+//   }
+
+//   const data = await res.json();
+//   render("upcoming-appointments", data.upcoming);
+//   render("past-appointments", data.past);
+// }
+
+// function render(id, items) {
+//   const ul = document.getElementById(id);
+//   ul.innerHTML = "";
+
+//   if (!items || items.length === 0) {
+//     ul.innerHTML = "<li>No appointments</li>";
+//     return;
+//   }
+
+//   items.forEach(a => {
+//     const li = document.createElement("li");
+//     li.textContent = `${a.date} ${a.time} • Dr ${a.doctor}`;
+//     ul.appendChild(li);
+//   });
+// }
+
+// function goBack() {
+//   window.location.href = "/";
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+console.log("✅ profile.js loaded");
+
+
 document.addEventListener("DOMContentLoaded", loadAppointments);
 
 async function loadAppointments() {
@@ -11,6 +63,7 @@ async function loadAppointments() {
   }
 
   const data = await res.json();
+  console.log("📦 profile data:", data);
   render("upcoming-appointments", data.upcoming);
   render("past-appointments", data.past);
 }
@@ -94,7 +147,7 @@ async function cancelAppointment(appointmentId) {
 
   if (!confirmCancel) return;
 
-  const res = await fetch(`/booking/cancel/${appointmentId}`, {
+  const res = await fetch(`/auth/profile/cancel/${appointmentId}`, {
     method: "POST",
     credentials: "include"
   });
@@ -106,11 +159,12 @@ async function cancelAppointment(appointmentId) {
 
   const data = await res.json();
 
-  if (data.success) {
+  if (data.ok) {
     alert("Appointment cancelled");
-    location.reload(); // simple & safe refresh
+    location.reload();
   } else {
     alert("Could not cancel appointment");
   }
 }
+
 
