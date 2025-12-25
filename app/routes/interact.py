@@ -211,7 +211,7 @@ def interact(req: ChatRequest, request: Request):
 
         return {"reply": "Please reply with yes or no."}
     
-      # =================================================
+    # =================================================
     # AREA HANDLER
     # =================================================
     # =================================================
@@ -326,20 +326,6 @@ def interact(req: ChatRequest, request: Request):
         ctx["time"] = ctx["available_slots"][normalized.index(user_time)]
         ctx["awaiting"] = "name"
         return {"reply": "Please enter patient name."}
-    
-        # =================================================
-    # FINAL BOOKING
-    # =================================================
-    # if ctx["awaiting"] == "name":
-    #     ctx["patient_name"] = msg.title()
-    #     _, reply = book_appointment_with_user(user_id, {
-    #         "patient_name": ctx["patient_name"],
-    #         "doctor": ctx["doctor"]["name"],
-    #         "date": ctx["day"],
-    #         "time": ctx["time"]
-    #     })
-    #     booking_context.pop(user_id, None)
-    #     return {"reply": reply}
 
     # =================================================
     # BOOKING PREVIEW (NEW)
@@ -380,8 +366,27 @@ def interact(req: ChatRequest, request: Request):
             "time": ctx["time"]
         })
 
+        doctor_name = ctx["doctor"]["name"]
+        doctor_specialty = ctx["doctor"]["specialty"].title()
+        area = ctx["area"].replace("_", " ").title()
+        day = ctx["day"]
+
+        why_text = (
+        f"I suggested {doctor_name} because your symptoms matched "
+        f"{doctor_specialty.lower()}, they practice near {area}, "
+        f"and have availability on {day}."
+    )
+
         booking_context.pop(user_id, None)
-        return {"reply": reply}
+        final_reply = (
+        f"{reply}\n\n"
+        f"ℹ️ Why this doctor?\n"
+        f"{why_text}"
+    )
+
+    booking_context.pop(user_id, None)
+    return {"reply": final_reply}
+
 
 
 
