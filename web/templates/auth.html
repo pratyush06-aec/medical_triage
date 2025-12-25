@@ -2,59 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Login / Sign Up</title>
+  <title>Medical Triage Assistant | Secure Login</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- UI Effects & Animations -->
+  <link rel="stylesheet" href="/static/ui-effects.css">
 </head>
-<body>
 
-<!-- =================================================
-     ❌ OLD AUTH UI (COMMENTED — DO NOT DELETE)
-     ================================================= -->
-<!--
-<div id="auth-container">
-  <h2>Login / Sign Up</h2>
+<body class="min-h-screen bg-emerald-50/40 flex items-center justify-center font-sans text-gray-900">
 
-  <input id="email" type="email" placeholder="Email" />
-  <input id="password" type="password" placeholder="Password" />
+<!-- ================= AUTH CARD ================= -->
+<div class="w-full max-w-md bg-white border border-emerald-200 rounded-xl p-6 shadow-sm view-transition">
 
-  <div style="margin-top: 10px;">
-    <button onclick="login()">Login</button>
-    <button onclick="signup()">Sign Up</button>
+  <!-- Header -->
+  <div class="text-center mb-6">
+    <div class="text-emerald-600 text-2xl mb-1">🏥</div>
+    <h1 class="text-xl font-semibold">
+      Medical Triage Assistant
+    </h1>
+    <p class="text-sm text-gray-600">
+      Secure access to your care
+    </p>
   </div>
 
-  <p id="auth-error" style="color:red;"></p>
-</div>
--->
+  <!-- Error -->
+  <div
+    id="auth-error"
+    class="text-sm text-red-600 mb-4"
+    style="display:none;"
+  ></div>
 
-<!-- =================================================
-     ✅ NEW AUTH UI (MODIFIED)
-     =================================================
-     🔧 MODIFICATION:
-     - Wrapped inputs in a <form>
-     - Explicitly set button type="button"
-     - Prevents browser auto form submission
-     - Allows JS login()/signup() to execute
--->
+  <!-- Form -->
+  <form onsubmit="return false;" class="space-y-4">
 
-<div id="auth-container">
-  <h2>Login / Sign Up</h2>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">
+        Email address
+      </label>
+      <input
+        id="email"
+        type="email"
+        placeholder="you@example.com"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md
+               focus:outline-none focus:ring-2 focus:ring-emerald-300"
+      />
+    </div>
 
-  <form>
-    <input id="email" type="email" placeholder="Email" />
-    <input id="password" type="password" placeholder="Password" />
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">
+        Password
+      </label>
+      <input
+        id="password"
+        type="password"
+        placeholder="••••••••"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md
+               focus:outline-none focus:ring-2 focus:ring-emerald-300"
+      />
+    </div>
 
-    <div style="margin-top: 10px;">
-      <!-- 🔧 FIX: prevent form submission -->
-      <button type="button" onclick="login()">Login</button>
-      <button type="button" onclick="signup()">Sign Up</button>
+    <!-- Actions -->
+    <div class="pt-2 space-y-2">
+      <button
+        id="loginBtn"
+        data-label="Login"
+        type="button"
+        onclick="login()"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white
+               py-2 rounded-md font-medium"
+      >
+        Login
+      </button>
+
+      <button
+        id="signupBtn"
+        data-label="Sign Up"
+        type="button"
+        onclick="signup()"
+        class="w-full border border-gray-300 text-gray-700
+               py-2 rounded-md font-medium hover:bg-gray-100"
+      >
+        Sign Up
+      </button>
     </div>
   </form>
 
-  <p id="auth-error" style="color:red;"></p>
+  <!-- Footer -->
+  <p class="text-xs text-gray-500 text-center mt-6">
+    Your information is handled securely and confidentially.
+  </p>
 </div>
 
-<!-- =================================================
-     AUTH SCRIPT
-     ================================================= -->
+<!-- Auth Logic -->
 <script src="/static/auth.js"></script>
 
 </body>

@@ -1,292 +1,128 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>Medical Triage Assistant</title>
-
-    <!-- ✅ Tailwind CSS
-    <link
-        href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css"
-        rel="stylesheet"
-    >
-
-    <!-- ✅ App JS
-    <script defer src="/static/app.js"></script>
-    <script defer src="/static/auth.js"></script>
-</head>
-
-<body class="bg-gray-100 font-sans">
-
-    <!-- 🔐 AUTH VIEW
-    <div
-        id="auth-view"
-        style="display:none;"
-        class="min-h-screen flex items-center justify-center"
-    ></div>
-
-    <!-- 💬 CHAT VIEW
-    <div
-        id="chat-view"
-        style="display:none;"
-    >
-        <div class="max-w-xl mx-auto mt-10 bg-white shadow-md rounded-lg p-4">
-
-            <!-- 🔹 Header
-            <div class="flex justify-between items-center mb-3">
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    🏥 Medical Triage Assistant
-                </h1>
-
-                <div class="flex gap-2">
-                    <!-- 👤 PROFILE TOGGLE 
-                    <button
-                        id="profile-toggle"
-                        class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded"
-                    >
-                        Profile
-                    </button>
-
-                    <!-- 🚪 LOGOUT
-                    <button
-                        onclick="logout()"
-                        class="text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
-                    >
-                        Logout
-                    </button>
-                </div>
-            </div>
-
-            <!-- 👤 PROFILE PANEL
-            <div
-                id="profile-panel"
-                class="hidden mb-4 p-3 border rounded bg-gray-50 text-sm"
-            >
-                <h2 class="font-semibold mb-2">My Appointments</h2>
-
-                <div class="mb-2">
-                    <h3 class="font-medium text-green-600">Upcoming</h3>
-                    <ul id="upcoming-appointments" class="ml-4 list-disc"></ul>
-                </div>
-
-                <div>
-                    <h3 class="font-medium text-gray-600">Past</h3>
-                    <ul id="past-appointments" class="ml-4 list-disc"></ul>
-                </div>
-            </div>
-
-            <!-- 🔹 Chat Area
-            <div
-                id="chat-box"
-                class="h-96 overflow-y-auto mb-4 p-3 border rounded bg-gray-50 space-y-2"
-            ></div>
-
-            <!-- 🔹 Input Area 
-            <div class="flex gap-2">
-                <input
-                    id="user-input"
-                    type="text"
-                    autocomplete="off"
-                    class="flex-1 border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="Describe your symptoms..."
-                    onkeydown="if(event.key === 'Enter') sendMessage()"
-                />
-
-                <button
-                    onclick="sendMessage()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                >
-                    Send
-                </button>
-            </div>
-
-        </div>
-    </div>
-
-</body>
-</html> -->
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
     <title>Medical Triage Assistant</title>
 
-    <!-- ✅ Tailwind CSS -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/tailwindcss/dist/tailwind.min.css"
-        rel="stylesheet"
-    >
+    <!-- Tailwind CSS (v3 CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- ✅ App JS -->
-    <script defer src="/static/app.js"></script>
+    <!-- UI Effects & Animations -->
+    <link rel="stylesheet" href="/static/ui-effects.css">
+
+    <!-- App Scripts -->
+    <script defer src="/static/app_v2.js"></script>
     <script defer src="/static/auth.js"></script>
 </head>
 
-<body class="bg-gray-100 font-sans">
+<body class="bg-emerald-50/40 font-sans text-gray-900">
 
-    <!-- 🔐 AUTH VIEW -->
-    <div
-        id="auth-view"
-        style="display:none;"
-        class="min-h-screen flex items-center justify-center"
-    ></div>
+<!-- ================= AUTH VIEW ================= -->
+<div
+    id="auth-view"
+    style="display:none;"
+    class="min-h-screen flex items-center justify-center"
+></div>
 
-    <!-- 💬 CHAT VIEW (AGENT ONLY) -->
-    <div
-        id="chat-view"
-        style="display:none;"
-    >
-        <div class="max-w-xl mx-auto mt-10 bg-white shadow-md rounded-lg p-4">
+<!-- ================= APP ================= -->
+<div id="chat-view" style="display:none;">
 
-            <!-- 🔹 Header -->
-            <div class="flex justify-between items-center mb-3">
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    🏥 Medical Triage Assistant
+    <!-- Header -->
+    <header class="bg-white border-b border-emerald-200">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-600 text-xl">🏥</span>
+                <h1 class="text-lg font-semibold">
+                    Medical Triage Assistant
                 </h1>
-
-                <div class="flex gap-2">
-
-                    <!-- ❌ OLD PROFILE BUTTON (COMMENTED — DO NOT DELETE)
-                         Reason:
-                         - ID mismatch with app.js
-                         - Click handler never attached
-                    -->
-                    <!--
-                    <button
-                        id="profile-toggle"
-                        class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded"
-                    >
-                        Profile
-                    </button>
-                    -->
-
-                    <!-- ✅ NEW PROFILE BUTTON (FINAL — SPA SAFE)
-                         MODIFICATION:
-                         - ID matches app.js exactly (profileBtn)
-                         - type="button" prevents form interference
-                         - View switching handled in app.js
-                    -->
-                    <button
-                        id="profileBtn"
-                        type="button"
-                        class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded"
-                    >
-                        Profile
-                    </button>
-
-                    <!-- 🚪 LOGOUT -->
-                    <button
-                        onclick="logout()"
-                        class="text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
-                    >
-                        Logout
-                    </button>
-                </div>
             </div>
 
-            <!-- ❌ LEGACY PROFILE PANEL (COMMENTED — DO NOT DELETE)
-                 NOTE:
-                 - Old inline panel-based profile UI
-                 - Replaced by dedicated profile-view
-            -->
-            <!--
-            <div
-                id="profile-panel"
-                class="hidden mb-4 p-3 border rounded bg-gray-50 text-sm"
-            >
-                <h2 class="font-semibold mb-2">My Appointments</h2>
-
-                <div class="mb-2">
-                    <h3 class="font-medium text-green-600">Upcoming</h3>
-                    <ul id="upcoming-appointments" class="ml-4 list-disc"></ul>
-                </div>
-
-                <div>
-                    <h3 class="font-medium text-gray-600">Past</h3>
-                    <ul id="past-appointments" class="ml-4 list-disc"></ul>
-                </div>
-            </div>
-            -->
-
-            <!-- ❌ OLD MAIN CONTENT CONTAINER (COMMENTED — DO NOT DELETE)
-                 Reason:
-                 - Previously used to inject profile above chat
-                 - Caused profile to overlap agent UI
-            -->
-            <!--
-            <div id="mainContent"></div>
-            -->
-
-            <!-- 💬 CHAT AREA (AGENT OUTPUT) -->
-            <div
-                id="chat-box"
-                class="h-96 overflow-y-auto mb-4 p-3 border rounded bg-gray-50 space-y-2"
-            ></div>
-
-            <!-- 🔹 Input Area -->
             <div class="flex gap-2">
-                <input
-                    id="user-input"
-                    type="text"
-                    autocomplete="off"
-                    class="flex-1 border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="Describe your symptoms..."
-                    onkeydown="if(event.key === 'Enter') sendMessage()"
-                />
+                <button
+                    id="profileBtn"
+                    type="button"
+                    class="text-sm px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                    Profile
+                </button>
 
                 <button
-                    onclick="sendMessage()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                    onclick="logout()"
+                    class="text-sm px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white"
                 >
-                    Send
+                    Logout
                 </button>
             </div>
-
         </div>
-    </div>
+    </header>
 
-    <!-- 👤 PROFILE VIEW (NEW — SEPARATE SCREEN, SPA STYLE)
-         MODIFICATION (CRITICAL FIX):
-         - Completely separate from chat-view
-         - Prevents profile rendering above agent
-         - Visibility toggled via JS
-    -->
-    <div
-        id="profile-view"
-        style="display:none;"
-        class="max-w-xl mx-auto mt-10 bg-white shadow-md rounded-lg p-4"
-    >
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">My Appointments</h2>
+    <!-- Chat -->
+    <main class="max-w-3xl mx-auto px-4 py-6">
 
-            <!-- 🔙 BACK TO CHAT -->
+        <!-- Intro -->
+        <p class="text-sm text-gray-700 mb-3">
+            Describe your symptoms and I’ll guide you to appropriate care.
+        </p>
+
+        <!-- Chat Box -->
+        <div
+            id="chat-box"
+            class="h-96 overflow-y-auto mb-4 p-4 bg-white border border-gray-200 rounded-lg space-y-3"
+        ></div>
+
+        <!-- System Thinking Bar (Signature UX) -->
+        <div
+            id="thinking-bar"
+            class="hidden h-1 rounded bg-emerald-500/70 mb-2 overflow-hidden"
+        >
+            <div class="h-full bg-emerald-600 animate-pulse"></div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="flex gap-2">
+            <input
+                id="user-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Describe your symptoms..."
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md
+                       focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                onkeydown="if(event.key === 'Enter') sendMessage()"
+            />
+
+            <button
+                onclick="sendMessage()"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white
+                       rounded-md font-medium"
+            >
+                Continue
+            </button>
+        </div>
+    </main>
+</div>
+
+<!-- ================= PROFILE ================= -->
+<div
+    id="profile-view"
+    style="display:none;"
+    class="max-w-3xl mx-auto px-4 py-6"
+>
+    <div class="bg-white border border-gray-200 rounded-lg p-5">
+        <div class="flex justify-between items-center mb-5">
+            <h2 class="text-lg font-semibold">My Appointments</h2>
+
             <button
                 id="backToChatBtn"
                 type="button"
-                class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+                class="text-sm px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
             >
-                Back
+                Back to Chat
             </button>
         </div>
 
-        <!-- ✅ PROFILE CONTENT TARGET
-             Used by renderProfile() in app.js
-        -->
-        <div id="profileContent"></div>
+        <div id="profileContent" class="text-sm text-gray-700"></div>
     </div>
+</div>
 
 </body>
 </html>
-
