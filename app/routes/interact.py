@@ -1,28 +1,250 @@
+# from fastapi import APIRouter, Request
+# from pydantic import BaseModel
+# import re
+
+# from services.booking_service import (
+#     book_appointment_with_user,
+#     get_unavailable_slots,
+# )
+
+# from services.profile_service import (
+#     get_user_active_appointments,
+#     cancel_appointment_db
+# )
+
+# from utils.emergency_support import (
+#     detect_emergency_level,
+#     infer_specialty_from_symptoms,
+#     format_sos_message,
+#     format_home_care
+# )
+
+# from services.catalog_service import get_doctor_catalog
+
+# router = APIRouter()
+# booking_context = {}
+
+
+# class ChatRequest(BaseModel):
+#     message: str
+
+
+# SPECIALTY_MAP = {
+#     "cardiology": "cardiologist",
+#     "neurology": "neurologist",
+#     "gastroenterology": "gastroenterologist",
+#     "general": "general_physician",
+# }
+
+
+# def format_doctor_list(doctors):
+#     out = ""
+#     for i, d in enumerate(doctors, 1):
+#         days = ", ".join(d["schedule"].keys())
+#         out += f"{i}. {d['name']} ({days})\n"
+#     return out
+
+# def format_appointments_list(appts):
+#     response = ""
+#     for i, a in enumerate(appts, start=1):
+#         response += f"{i}. {a[1]} — {a[2]} — {a[3]}\n"
+#     return response
+
+
+# @router.post("/interact")
+# def interact(req: ChatRequest, request: Request):
+
+#     user = request.session.get("user")
+#     if not user:
+#         return {"reply": "❌ Please log in to continue."}
+
+#     user_id = user["id"]
+#     msg = re.sub(r"\s+", " ", re.sub(r"[.,]", "", req.message.lower().strip()))
+
+#     if user_id not in booking_context:
+#         booking_context[user_id] = {
+#             "awaiting": None,
+#             "pending_confirmation": None,
+#             "patient_name": None,
+#             "doctor": None,
+#             "day": None,
+#             "time": None,
+#             "available_doctors": [],
+#             "available_slots": [],
+#             "appointments": [],
+#             "selected_appointment": None,
+#             "specialty": None,
+#             "fallback_specialty": None,
+#             "area": None,
+#             "emergency_checked": False,
+#         }
+
+#     ctx = booking_context[user_id]
+
+#     # ================= TRIAGE =================
+#     if not ctx["emergency_checked"] and ctx["awaiting"] is None:
+#         ctx["emergency_checked"] = True
+#         ctx["specialty"] = SPECIALTY_MAP.get(
+#             infer_specialty_from_symptoms(msg),
+#             infer_specialty_from_symptoms(msg)
+#         )
+
+#         if detect_emergency_level(msg) == "HIGH":
+#             return {"reply": format_sos_message()}
+
+#         ctx["awaiting"] = "action_selection"
+#         return {"reply": f"{format_home_care()}\n\n1️⃣ Book\n2️⃣ Reschedule\n3️⃣ Cancel"}
+
+#     # ================= ACTION =================
+#     if ctx["awaiting"] == "action_selection":
+#         if msg == "1":
+#             ctx["awaiting"] = "booking_consent"
+#             return {"reply": "Do you want to book an appointment? (yes/no)"}
+
+#         if msg == "3":
+#             appts = get_user_active_appointments(user_id)
+#             if not appts:
+#                 return {"reply": "You have no active appointments."}
+#             ctx["appointments"] = appts
+#             ctx["awaiting"] = "cancel_select"
+#             text = "Select appointment to cancel:\n"
+#             for i, a in enumerate(appts, 1):
+#                 text += f"{i}. {a['doctor']} | {a['date']} | {a['time']}\n"
+#             return {"reply": text}
+
+#         return {"reply": "Choose 1, 2 or 3."}
+
+#     # ================= BOOKING CONSENT =================
+#     if ctx["awaiting"] == "booking_consent":
+#         if msg == "yes":
+#             ctx["awaiting"] = "area"
+#             return {"reply": "Enter your area."}
+#         booking_context.pop(user_id, None)
+#         return {"reply": "Cancelled."}
+
+#     # ================= AREA =================
+#     if ctx["awaiting"] == "area":
+#         ctx["area"] = msg.replace(" ", "_")
+#         reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
+
+#         if reply.get("type") == "fallback_offer":
+#             ctx["fallback_specialty"] = reply["fallback_specialty"]
+#             ctx["awaiting"] = "fallback_consent"
+#             return {"reply": f"No {ctx['specialty']} found. Use {ctx['fallback_specialty']}? (yes/no)"}
+
+#         ctx["available_doctors"] = reply["doctors"]
+
+#         if len(ctx["available_doctors"]) == 1:
+#             ctx["doctor"] = ctx["available_doctors"][0]
+#             ctx["pending_confirmation"] = "doctor"
+#             ctx["awaiting"] = "confirm_single"
+#             return {"reply": f"Only one doctor: {ctx['doctor']['name']}. Continue? (yes/no)"}
+
+#         ctx["awaiting"] = "doctor_selection"
+#         return {"reply": "Doctors:\n" + format_doctor_list(ctx["available_doctors"])}
+
+#     # ================= FALLBACK =================
+#     if ctx["awaiting"] == "fallback_consent":
+#         if msg != "yes":
+#             booking_context.pop(user_id, None)
+#             return {"reply": "Cancelled."}
+#         ctx["specialty"] = ctx["fallback_specialty"]
+#         ctx["awaiting"] = "area"
+#         return {"reply": "Rechecking doctors..."}
+
+#     # ================= CONFIRM SINGLE =================
+#     if ctx["awaiting"] == "confirm_single":
+#         if msg != "yes":
+#             booking_context.pop(user_id, None)
+#             return {"reply": "Cancelled."}
+
+#         step = ctx["pending_confirmation"]
+#         ctx["pending_confirmation"] = None
+
+#         if step == "doctor":
+#             ctx["awaiting"] = "day_selection"
+#             return {"reply": "Enter day."}
+
+#         if step == "day":
+#             ctx["awaiting"] = "time_selection"
+#             return {"reply": f"Available slots:\n{', '.join(ctx['available_slots'])}"}
+
+#         if step == "time":
+#             ctx["awaiting"] = "name"
+#             return {"reply": "Enter patient name."}
+
+#     # ================= DOCTOR =================
+#     if ctx["awaiting"] == "doctor_selection":
+#         i = int(msg) - 1
+#         ctx["doctor"] = ctx["available_doctors"][i]
+#         ctx["awaiting"] = "day_selection"
+#         return {"reply": "Enter day."}
+
+#     # ================= DAY =================
+#     if ctx["awaiting"] == "day_selection":
+#         day = msg.title()
+#         slots = ctx["doctor"]["schedule"].get(day)
+#         if not slots:
+#             return {"reply": "Invalid day."}
+#         booked = get_unavailable_slots(ctx["doctor"]["name"], day)
+#         ctx["available_slots"] = [s for s in slots if s not in booked]
+#         ctx["day"] = day
+
+#         if len(ctx["available_slots"]) == 1:
+#             ctx["time"] = ctx["available_slots"][0]
+#             ctx["pending_confirmation"] = "time"
+#             ctx["awaiting"] = "confirm_single"
+#             return {"reply": f"Only one slot {ctx['time']}. Continue? (yes/no)"}
+
+#         ctx["awaiting"] = "time_selection"
+#         return {"reply": f"Choose time:\n{', '.join(ctx['available_slots'])}"}
+
+#     # ================= TIME =================
+#     if ctx["awaiting"] == "time_selection":
+#         if msg not in [s.replace(" ", "") for s in ctx["available_slots"]]:
+#             return {"reply": "Invalid time."}
+#         ctx["time"] = ctx["available_slots"][0]
+#         ctx["awaiting"] = "name"
+#         return {"reply": "Enter patient name."}
+
+#     # ================= FINAL =================
+#     if ctx["awaiting"] == "name":
+#         _, reply = book_appointment_with_user(user_id, {
+#             "patient_name": msg.title(),
+#             "doctor": ctx["doctor"]["name"],
+#             "date": ctx["day"],
+#             "time": ctx["time"]
+#         })
+#         booking_context.pop(user_id, None)
+#         return {"reply": reply}
+
+#     return {"reply": "Something went wrong."}
+
+
+
+
+
+
+
+
+
+
+
+
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 import re
 
-# =================================================
-# 🔧 IMPORT BOOKING / CANCEL / LOOKUP HELPERS
-# =================================================
 from services.booking_service import (
     book_appointment_with_user,
     get_unavailable_slots,
-    get_patient_appointments,  # ❌ LEGACY – preserved
-    cancel_appointment          # ❌ LEGACY – preserved
 )
 
-# =================================================
-# ✅ MODIFICATION: USER-SCOPED PROFILE HELPERS
-# =================================================
 from services.profile_service import (
     get_user_active_appointments,
     cancel_appointment_db
 )
 
-# =================================================
-# TRIAGE + SPECIALTY INFERENCE
-# =================================================
 from utils.emergency_support import (
     detect_emergency_level,
     infer_specialty_from_symptoms,
@@ -30,9 +252,6 @@ from utils.emergency_support import (
     format_home_care
 )
 
-# =================================================
-# CATALOG SERVICE
-# =================================================
 from services.catalog_service import get_doctor_catalog
 
 router = APIRouter()
@@ -42,6 +261,7 @@ booking_context = {}
 class ChatRequest(BaseModel):
     message: str
 
+
 SPECIALTY_MAP = {
     "cardiology": "cardiologist",
     "neurology": "neurologist",
@@ -49,291 +269,258 @@ SPECIALTY_MAP = {
     "general": "general_physician",
 }
 
-# =================================================
-# 🔧 FORMAT DOCTOR LIST
-# =================================================
-def format_doctor_list(doctors):
-    response = ""
-    for i, doc in enumerate(doctors, start=1):
-        days = ", ".join(doc["schedule"].keys())
-        response += f"{i}. {doc['name']} ({days})\n"
-    return response
 
+def format_doctor_list(doctors, show_index=True):
+    text = ""
+    for i, d in enumerate(doctors, 1):
+        specialty = d.get("specialty", "").replace("_", " ").title()
 
-# =================================================
-# 🔧 FORMAT APPOINTMENTS LIST
-# ❌ LEGACY — PRESERVED (NOT USED ANYMORE)
-# =================================================
-def format_appointments_list(appts):
-    response = ""
-    for i, a in enumerate(appts, start=1):
-        response += f"{i}. {a[1]} — {a[2]} — {a[3]}\n"
-    return response
+        if show_index:
+            text += f"{i}. {d['name']} ({specialty})\n"
+        else:
+            text += f"{d['name']} ({specialty})\n"
+
+    return text
 
 
 @router.post("/interact")
 def interact(req: ChatRequest, request: Request):
 
-    # =================================================
-    # ✅ SESSION AUTH (SINGLE SOURCE OF TRUTH)
-    # =================================================
     user = request.session.get("user")
     if not user:
         return {"reply": "❌ Please log in to continue."}
 
     user_id = user["id"]
+    msg = re.sub(r"\s+", " ", re.sub(r"[.,]", "", req.message.lower().strip()))
 
-    msg = req.message.lower().strip()
-    msg = re.sub(r"[.,]", "", msg)
-    msg = re.sub(r"\s+", " ", msg)
-
-    # =================================================
-    # 🔧 CONTEXT INITIALIZATION
-    # =================================================
     if user_id not in booking_context:
         booking_context[user_id] = {
+            "awaiting": None,
+            "pending_confirmation": None,
             "patient_name": None,
             "doctor": None,
-            "time": None,
             "day": None,
-            "awaiting": None,
-            "available_doctors": None,
-            "available_slots": None,
-            "mode": None,
-            "appointments": None,
+            "time": None,
+            "available_doctors": [],
+            "available_days": [],
+            "available_slots": [],
+            "appointments": [],
             "selected_appointment": None,
-            "rescheduling": False,
-            "emergency_checked": False,
-            "emergency_level": None,
             "specialty": None,
             "fallback_specialty": None,
             "area": None,
-            "symptom_text": None
+            "emergency_checked": False,
         }
 
     ctx = booking_context[user_id]
 
-    # =================================================
-    # TRIAGE (RUNS ONCE)
-    # =================================================
+    # ================= TRIAGE =================
     if not ctx["emergency_checked"] and ctx["awaiting"] is None:
-        ctx["symptom_text"] = msg
-        ctx["emergency_level"] = detect_emergency_level(msg)
-        ctx["specialty"] = infer_specialty_from_symptoms(msg)
-        ctx["specialty"] = SPECIALTY_MAP.get(ctx["specialty"], ctx["specialty"])
         ctx["emergency_checked"] = True
+        ctx["specialty"] = SPECIALTY_MAP.get(
+            infer_specialty_from_symptoms(msg),
+            infer_specialty_from_symptoms(msg)
+        )
 
-        if ctx["emergency_level"] == "HIGH":
+        if detect_emergency_level(msg) == "HIGH":
             return {"reply": format_sos_message()}
 
         ctx["awaiting"] = "action_selection"
         return {
             "reply": (
                 f"{format_home_care()}\n\n"
-                "What would you like to do?\n"
-                "1️⃣ Book new appointment\n"
-                "2️⃣ Reschedule appointment\n"
-                "3️⃣ Cancel appointment"
+                "1️⃣ Book appointment\n"
+                "2️⃣ Reschedule\n"
+                "3️⃣ Cancel"
             )
         }
 
-    # =================================================
-    # ACTION SELECTION
-    # =================================================
+    # ================= ACTION =================
     if ctx["awaiting"] == "action_selection":
-
         if msg == "1":
-            # ✅ FIX: clean only booking-related fields, keep ctx intact
-            ctx["mode"] = "book"
             ctx["awaiting"] = "booking_consent"
+            return {"reply": "Do you want to book an appointment? (yes/no)"}
 
-            ctx["patient_name"] = None
-            ctx["doctor"] = None
-            ctx["time"] = None
-            ctx["day"] = None
-            ctx["available_doctors"] = None
-            ctx["available_slots"] = None
-            ctx["appointments"] = None
-            ctx["selected_appointment"] = None
-            ctx["rescheduling"] = False
-            ctx["area"] = None
-
-            return {"reply": "Would you like to book an appointment? (yes/no)"}
-        
-        elif msg == "2":
-            ctx["mode"] = "reschedule"
-            ctx["awaiting"] = "reschedule_name"
-            return {"reply": "Please enter your name to reschedule your appointment."}
-
-        # =================================================
-        # ❌ LEGACY CANCEL FLOW (COMMENTED — DO NOT DELETE)
-        # =================================================
-        # elif msg == "3":
-        #     ctx["mode"] = "cancel"
-        #     ctx["awaiting"] = "patient_name_lookup"
-        #     return {"reply": "Please enter your name to cancel appointment."}
-
-        # =================================================
-        # ✅ MODIFICATION: USER-SCOPED CANCEL FLOW
-        # =================================================
-        elif msg == "3":
-
-            appointments = get_user_active_appointments(user_id)
-
-            if not appointments:
-                return {"reply": "You have no active appointments to cancel."}
-
-            ctx["mode"] = "cancel"
+        if msg == "3":
+            appts = get_user_active_appointments(user_id)
+            if not appts:
+                return {"reply": "You have no active appointments."}
+            ctx["appointments"] = appts
             ctx["awaiting"] = "cancel_select"
-            ctx["appointments"] = appointments
-
-            reply = "Please select the appointment you want to cancel:\n\n"
-            for i, a in enumerate(appointments, 1):
+            reply = "Select appointment to cancel:\n\n"
+            for i, a in enumerate(appts, 1):
                 reply += f"{i}. {a['doctor']} | {a['date']} | {a['time']}\n"
-
             return {"reply": reply}
 
-        return {"reply": "Please choose 1, 2, or 3."}
-    
+        return {"reply": "Please choose 1, 2 or 3."}
 
-    # =================================================
-    # BOOKING CONSENT
-    # =================================================
+    # ================= BOOKING CONSENT =================
     if ctx["awaiting"] == "booking_consent":
-
-        if msg in ("yes", "y"):
+        if msg == "yes":
             ctx["awaiting"] = "area"
-            return {"reply": "Please tell me your area of residence."}
+            return {"reply": "Enter your area."}
+        booking_context.pop(user_id, None)
+        return {"reply": "Booking cancelled."}
 
-        if msg in ("no", "n"):
-            booking_context.pop(user_id, None)
-            return {"reply": "Okay. Take care."}
-
-        return {"reply": "Please reply with yes or no."}
-    
-      # =================================================
-    # AREA HANDLER
-    # =================================================
-    # =================================================
-    # AREA HANDLER — NORMALIZATION FIX (CRITICAL)
-    # =================================================
+    # ================= AREA =================
     if ctx["awaiting"] == "area":
+        ctx["area"] = msg.replace(" ", "_")
+        catalog = get_doctor_catalog(ctx["area"], ctx["specialty"])
 
-        # 🔧 FIX: normalize area ONCE
-        ctx["area"] = msg.strip().lower().replace(" ", "_")
-
-        catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
-
-
-        if catalog_reply.get("type") == "fallback_offer":
-            ctx["fallback_specialty"] = catalog_reply["fallback_specialty"]
+        if catalog.get("type") == "fallback_offer":
+            ctx["fallback_specialty"] = catalog["fallback_specialty"]
             ctx["awaiting"] = "fallback_consent"
             return {
                 "reply": (
-                    f"No {ctx['specialty']} found in {ctx['area'].title()}.\n"
+                    f"No {ctx['specialty']} found.\n"
                     f"Consult {ctx['fallback_specialty']} instead? (yes/no)"
                 )
             }
 
-        ctx["available_doctors"] = catalog_reply["doctors"]
-        ctx["awaiting"] = "doctor_selection"
-        return {
-            "reply": (
-                "🩺 Available Doctors:\n\n"
-                f"{format_doctor_list(ctx['available_doctors'])}\n"
-                "Please choose a doctor by number."
-            )
-        }
+        ctx["available_doctors"] = catalog["doctors"]
 
-    # =================================================
-    # 🔁 FALLBACK CONSENT HANDLER (CRITICAL FIX)
-    # =================================================
+        doctor_list = format_doctor_list(ctx["available_doctors"])
+
+        if len(ctx["available_doctors"]) == 1:
+            ctx["doctor"] = ctx["available_doctors"][0]
+            ctx["pending_confirmation"] = "doctor"
+            ctx["awaiting"] = "confirm_single"
+            doctor_list = format_doctor_list(
+                ctx["available_doctors"],
+                show_index=False
+            )
+
+            return {
+                "reply": (
+                    "Available doctor:\n\n"
+                    f"{doctor_list}\n"
+                    "Only one doctor is available. Continue? (yes/no)"
+                )
+            }
+        
+        doctor_list = format_doctor_list(
+            ctx["available_doctors"],
+            show_index=True
+        )
+
+        ctx["awaiting"] = "doctor_selection"
+        return {"reply": "Available doctors:\n\n" + doctor_list}
+
+    # ================= FALLBACK =================
     if ctx["awaiting"] == "fallback_consent":
-        if msg not in ("yes", "no"):
-            return {"reply": "Please answer yes or no."}
-
-        if msg == "no":
+        if msg != "yes":
             booking_context.pop(user_id, None)
-            return {"reply": "Okay, booking cancelled."}
-
+            return {"reply": "Booking cancelled."}
         ctx["specialty"] = ctx["fallback_specialty"]
-        ctx["awaiting"] = "doctor_selection"
+        ctx["awaiting"] = "area"
+        return {"reply": "Rechecking doctors..."}
 
-        catalog_reply = get_doctor_catalog(ctx["area"], ctx["specialty"])
-        doctors = catalog_reply.get("doctors", [])
-
-        if not doctors:
+    # ================= CONFIRM SINGLE =================
+    if ctx["awaiting"] == "confirm_single":
+        if msg != "yes":
             booking_context.pop(user_id, None)
-            return {"reply": "No doctors available. Please try later."}
+            return {"reply": "Booking cancelled."}
 
-        ctx["available_doctors"] = doctors
+        step = ctx["pending_confirmation"]
+        ctx["pending_confirmation"] = None
 
-        return {
-            "reply": (
-                f"🩺 Available {ctx['specialty']} doctors:\n\n"
-                f"{format_doctor_list(doctors)}\n"
-                "Please choose a doctor number."
-            )
-        }
+        if step == "doctor":
+            ctx["available_days"] = list(ctx["doctor"]["schedule"].keys())
+            ctx["awaiting"] = "day_catalog"
 
-    # =================================================
-    # DOCTOR SELECTION
-    # =================================================
+        elif step == "day":
+            ctx["awaiting"] = "time_catalog"
+
+        elif step == "time":
+            ctx["awaiting"] = "name"
+            return {"reply": "Please enter patient name."}
+
+
+    # ================= DOCTOR SELECTION =================
     if ctx["awaiting"] == "doctor_selection":
-        if not msg.isdigit():
-            return {"reply": "Please choose a valid doctor number."}
         try:
             ctx["doctor"] = ctx["available_doctors"][int(msg) - 1]
-        except IndexError:
+        except:
             return {"reply": "Invalid doctor selection."}
-        ctx["awaiting"] = "day_selection"
-        return {"reply": f"You selected {ctx['doctor']['name']}. Please choose a day."}
 
-    # =================================================
-    # DAY SELECTION
-    # =================================================
+        ctx["available_days"] = list(ctx["doctor"]["schedule"].keys())
+        ctx["awaiting"] = "day_catalog"
+
+    # ================= DAY CATALOG =================
+    if ctx["awaiting"] == "day_catalog":
+        days = "\n".join(f"- {d}" for d in ctx["available_days"])
+
+        if len(ctx["available_days"]) == 1:
+            ctx["day"] = ctx["available_days"][0]
+            ctx["pending_confirmation"] = "day"
+            ctx["awaiting"] = "confirm_single"
+            return {
+                "reply": (
+                    "Available day:\n\n"
+                    f"{days}\n\n"
+                    "Only one day is available. Continue? (yes/no)"
+                )
+            }
+
+        ctx["awaiting"] = "day_selection"
+        return {
+            "reply": (
+                "Available days:\n\n"
+                f"{days}\n\n"
+                "Please choose a day."
+            )
+        }
+
+    # ================= DAY SELECTION =================
     if ctx["awaiting"] == "day_selection":
         day = msg.title()
-        slots = ctx["doctor"]["schedule"].get(day)
-        if not slots:
-            return {"reply": "Please choose a valid day from the schedule."}
+        if day not in ctx["doctor"]["schedule"]:
+            return {"reply": "Please choose a day from the list."}
 
+        slots = ctx["doctor"]["schedule"][day]
         booked = get_unavailable_slots(ctx["doctor"]["name"], day)
         ctx["available_slots"] = [s for s in slots if s not in booked]
-
-        if not ctx["available_slots"]:
-            return {"reply": f"No available slots on {day}. Choose another day."}
-
         ctx["day"] = day
+        ctx["awaiting"] = "time_catalog"
+
+    # ================= TIME CATALOG =================
+    if ctx["awaiting"] == "time_catalog":
+        slots_text = "\n".join(f"- {s}" for s in ctx["available_slots"])
+
+        if len(ctx["available_slots"]) == 1:
+            ctx["time"] = ctx["available_slots"][0]
+            ctx["pending_confirmation"] = "time"
+            ctx["awaiting"] = "confirm_single"
+            return {
+                "reply": (
+                    "Available time slot:\n\n"
+                    f"{slots_text}\n\n"
+                    "Only one slot is available. Continue? (yes/no)"
+                )
+            }
+
         ctx["awaiting"] = "time_selection"
         return {
             "reply": (
-                f"Available slots on {day}:\n\n"
-                f"{', '.join(ctx['available_slots'])}\n\n"
-                "Please choose a time slot."
+                "Available time slots:\n\n"
+                f"{slots_text}\n\n"
+                "Please choose a time."
             )
         }
 
-    # =================================================
-    # TIME SELECTION
-    # =================================================
+    # ================= TIME SELECTION =================
     if ctx["awaiting"] == "time_selection":
-        user_time = msg.replace(" ", "")
         normalized = [s.replace(" ", "") for s in ctx["available_slots"]]
-        if user_time not in normalized:
-            return {"reply": "Please choose a valid available time slot."}
 
-        ctx["time"] = ctx["available_slots"][normalized.index(user_time)]
+        if msg not in normalized:
+            return {"reply": "Please choose a time from the list."}
+
+        ctx["time"] = ctx["available_slots"][normalized.index(msg)]
         ctx["awaiting"] = "name"
-        return {"reply": "Please enter patient name."}
-    
-        # =================================================
-    # FINAL BOOKING
-    # =================================================
+    # ================= FINAL =================
     if ctx["awaiting"] == "name":
-        ctx["patient_name"] = msg.title()
         _, reply = book_appointment_with_user(user_id, {
-            "patient_name": ctx["patient_name"],
+            "patient_name": msg.title(),
             "doctor": ctx["doctor"]["name"],
             "date": ctx["day"],
             "time": ctx["time"]
@@ -341,59 +528,4 @@ def interact(req: ChatRequest, request: Request):
         booking_context.pop(user_id, None)
         return {"reply": reply}
 
-    # =================================================
-    # ✅ MODIFICATION: CANCEL — SELECT APPOINTMENT
-    # =================================================
-    if ctx["awaiting"] == "cancel_select":
-
-        if not msg.isdigit():
-            return {"reply": "Please enter a valid appointment number."}
-
-        index = int(msg) - 1
-
-        try:
-            selected = ctx["appointments"][index]
-        except IndexError:
-            return {"reply": "Invalid selection. Please try again."}
-
-        ctx["selected_appointment"] = selected
-        ctx["awaiting"] = "cancel_confirm"
-
-        return {
-            "reply": (
-                "Are you sure you want to cancel this appointment?\n\n"
-                f"Doctor: {selected['doctor']}\n"
-                f"Date: {selected['date']}\n"
-                f"Time: {selected['time']}\n\n"
-                "Reply with yes or no."
-            )
-        }
-
-    # =================================================
-    # ✅ MODIFICATION: CANCEL — CONFIRMATION (FINAL FIX)
-    # =================================================
-    if ctx["awaiting"] == "cancel_confirm":
-
-        if msg.lower() == "no":
-            booking_context.pop(user_id, None)
-            return {"reply": "Cancellation aborted."}
-
-        if msg.lower() != "yes":
-            return {"reply": "Please reply with yes or no."}
-
-        appt = ctx["selected_appointment"]
-
-        cancel_appointment_db(
-            appointment_id=appt["id"],
-            user_id=user_id
-        )
-
-        booking_context.pop(user_id, None)
-        return {"reply": "✅ Appointment cancelled successfully."}
-
-    # =================================================
-    # BOOKING / RESCHEDULE LOGIC (UNCHANGED, BELOW)
-    # =================================================
-
-    print("UNHANDLED STATE:", ctx["awaiting"], "msg =", msg)
-    return {"reply": "Something went wrong. Please try again."}
+    return {"reply": "Something went wrong."}

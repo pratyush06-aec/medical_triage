@@ -237,6 +237,8 @@ templates = Jinja2Templates(directory="web/templates")
 # =====================================================
 @app.get("/")
 async def home(request: Request):
+    print("HIT ROOT ROUTE")
+
     """
     🔐 HARD AUTH GUARD
     - If user is NOT logged in → redirect to /login
