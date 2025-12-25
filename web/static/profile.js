@@ -95,10 +95,16 @@ function render(id, items) {
     // Resolve appointment ID safely (schema-safe)
     const appointmentId = a.appointment_id ?? a.id;
 
+    // // Appointment text
+    // const info = document.createElement("span");
+    // info.textContent = `${a.date} ${a.time} • Dr ${a.doctor}`;
+    // li.appendChild(info);
+
     // Appointment text
     const info = document.createElement("span");
-    info.textContent = `${a.date} ${a.time} • Dr ${a.doctor}`;
+    info.textContent = `${a.doctor} — ${a.date} (${a.time})`;
     li.appendChild(info);
+
 
     // 🔴 Cancel button (ONLY for upcoming appointments)
     if (id === "upcoming-appointments") {

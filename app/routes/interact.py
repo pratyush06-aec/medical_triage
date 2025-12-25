@@ -525,7 +525,29 @@ def interact(req: ChatRequest, request: Request):
             "date": ctx["day"],
             "time": ctx["time"]
         })
+
+        doctor_name = ctx["doctor"]["name"]
+        doctor_specialty = ctx["doctor"]["specialty"].title()
+        area = ctx["area"].replace("_", " ").title()
+        day = ctx["day"]
+
+        why_text = (
+        f"I suggested {doctor_name} because your symptoms matched "
+        f"{doctor_specialty.lower()}, they practice near {area}, "
+        f"and have availability on {day}."
+    )
+
         booking_context.pop(user_id, None)
-        return {"reply": reply}
+        final_reply = (
+        f"{reply}\n\n"
+        f"ℹ️ Why this doctor?\n"
+        f"{why_text}"
+    )
+
+    booking_context.pop(user_id, None)
+    return {"reply": final_reply}
+
+
+
 
     return {"reply": "Something went wrong."}
