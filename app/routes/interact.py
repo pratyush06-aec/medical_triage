@@ -330,16 +330,60 @@ def interact(req: ChatRequest, request: Request):
         # =================================================
     # FINAL BOOKING
     # =================================================
+    # if ctx["awaiting"] == "name":
+    #     ctx["patient_name"] = msg.title()
+    #     _, reply = book_appointment_with_user(user_id, {
+    #         "patient_name": ctx["patient_name"],
+    #         "doctor": ctx["doctor"]["name"],
+    #         "date": ctx["day"],
+    #         "time": ctx["time"]
+    #     })
+    #     booking_context.pop(user_id, None)
+    #     return {"reply": reply}
+
+    # =================================================
+    # BOOKING PREVIEW (NEW)
+    # =================================================
     if ctx["awaiting"] == "name":
         ctx["patient_name"] = msg.title()
+
+        preview = (
+            "Please confirm your appointment:\n\n"
+            f"Doctor: {ctx['doctor']['name']} ({ctx['doctor']['specialty'].title()})\n"
+            # f"Area: {ctx['doctor']['area']}\n"
+            f"Area: {ctx['area'].replace('_', ' ').title()}\n"
+            f"Day: {ctx['day']}\n"
+            f"Time: {ctx['time']}\n"
+            f"Patient: {ctx['patient_name']}\n\n"
+            "Confirm? (yes / no)"
+        )
+
+        ctx["awaiting"] = "confirm_booking"
+        return {"reply": preview}
+    
+    # =================================================
+    # BOOKING CONFIRMATION (FINAL COMMIT)
+    # =================================================
+    if ctx["awaiting"] == "confirm_booking":
+
+        if msg == "no":
+            booking_context.pop(user_id, None)
+            return {"reply": "❌ Booking cancelled. Let me know if you want to start again."}
+
+        if msg != "yes":
+            return {"reply": 'Please reply with "yes" or "no".'}
+
         _, reply = book_appointment_with_user(user_id, {
             "patient_name": ctx["patient_name"],
             "doctor": ctx["doctor"]["name"],
             "date": ctx["day"],
             "time": ctx["time"]
         })
+
         booking_context.pop(user_id, None)
         return {"reply": reply}
+
+
 
     # =================================================
     # ✅ MODIFICATION: CANCEL — SELECT APPOINTMENT
