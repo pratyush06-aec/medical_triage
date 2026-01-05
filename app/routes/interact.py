@@ -328,18 +328,26 @@ def interact(req: ChatRequest, request: Request):
         ctx["awaiting"] = "action_selection"
         return {
             "reply": (
+                "🩺 **Initial Guidance**\n\n"
                 f"{format_home_care()}\n\n"
-                "1️⃣ Book appointment\n"
-                "2️⃣ Reschedule\n"
-                "3️⃣ Cancel"
+                "What would you like to do next?\n\n"
+                "1️⃣ Book an appointment\n"
+                "2️⃣ Reschedule an existing appointment\n"
+                "3️⃣ Cancel an appointment"
             )
         }
+
 
     # ================= ACTION =================
     if ctx["awaiting"] == "action_selection":
         if msg == "1":
             ctx["awaiting"] = "booking_consent"
-            return {"reply": "Do you want to book an appointment? (yes/no)"}
+            return {
+                "reply": (
+                    "📅 **Appointment Booking**\n\n"
+                    "Would you like to proceed with booking an appointment? (yes/no)"
+                )
+            }
 
         if msg == "3":
             appts = get_user_active_appointments(user_id)
@@ -352,13 +360,18 @@ def interact(req: ChatRequest, request: Request):
                 reply += f"{i}. {a['doctor']} | {a['date']} | {a['time']}\n"
             return {"reply": reply}
 
-        return {"reply": "Please choose 1, 2 or 3."}
+        return {
+            "reply": "Please select one of the options above to continue."
+        }
+
 
     # ================= BOOKING CONSENT =================
     if ctx["awaiting"] == "booking_consent":
         if msg == "yes":
             ctx["awaiting"] = "area"
-            return {"reply": "Enter your area."}
+            return {
+                "reply": "📍 **Your Location**\n\nPlease enter your area to find nearby doctors."
+            }
         booking_context.pop(user_id, None)
         return {"reply": "Booking cancelled."}
 
@@ -404,7 +417,13 @@ def interact(req: ChatRequest, request: Request):
         )
 
         ctx["awaiting"] = "doctor_selection"
-        return {"reply": "Available doctors:\n\n" + doctor_list}
+        return {
+            "reply": (
+                "👨‍⚕️ **Available Doctors Near You**\n\n"
+                f"{doctor_list}\n"
+                "Please choose a doctor."
+            )
+        }
 
     # ================= FALLBACK =================
     if ctx["awaiting"] == "fallback_consent":
@@ -539,10 +558,12 @@ def interact(req: ChatRequest, request: Request):
 
         booking_context.pop(user_id, None)
         final_reply = (
-        f"{reply}\n\n"
-        f"ℹ️ Why this doctor?\n"
-        f"{why_text}"
-    )
+            "✅ **Appointment Confirmed**\n\n"
+            f"Your appointment has been booked successfully.\n\n"
+            "ℹ️ **Why this doctor?**\n"
+            f"{why_text}"
+        )
+
 
     booking_context.pop(user_id, None)
     return {"reply": final_reply}
