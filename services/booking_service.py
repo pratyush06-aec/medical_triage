@@ -39,35 +39,35 @@ def get_unavailable_slots(doctor_name: str, day: str):
 # =================================================
 # BOOK APPOINTMENT (UNCHANGED CORE LOGIC)
 # =================================================
-def book_appointment(data: dict):
-    doctor = data["doctor"]
-    date = data["date"]
-    time = data["time"]
+# def book_appointment(data: dict):
+#     doctor = data["doctor"]
+#     date = data["date"]
+#     time = data["time"]
 
-    # ❌ OLD (IMPLICIT — COMMENTED, DO NOT DELETE)
-    # Booking logic existed but availability was checked
-    # only at final insert time.
-    #
-    # if is_slot_booked(doctor, date, time):
-    #     return False, "Slot already booked"
+#     # ❌ OLD (IMPLICIT — COMMENTED, DO NOT DELETE)
+#     # Booking logic existed but availability was checked
+#     # only at final insert time.
+#     #
+#     # if is_slot_booked(doctor, date, time):
+#     #     return False, "Slot already booked"
 
-    # =================================================
-    # ✅ FINAL SLOT LOCK (MUST REMAIN)
-    # -------------------------------------------------
-    # Prevents race conditions when two users try to
-    # book the same slot at the same time.
-    # =================================================
-    if is_slot_booked(doctor, date, time):
-        return False, "Slot already booked"
+#     # =================================================
+#     # ✅ FINAL SLOT LOCK (MUST REMAIN)
+#     # -------------------------------------------------
+#     # Prevents race conditions when two users try to
+#     # book the same slot at the same time.
+#     # =================================================
+#     if is_slot_booked(doctor, date, time):
+#         return False, "Slot already booked"
 
-    create_appointment(
-        patient_name=data["patient_name"],
-        doctor=doctor,
-        date=date,
-        time=time
-    )
+#     create_appointment(
+#         patient_name=data["patient_name"],
+#         doctor=doctor,
+#         date=date,
+#         time=time
+#     )
 
-    return True, "Appointment booked successfully"
+#     return True, "Appointment booked successfully"
 
 
 # =================================================

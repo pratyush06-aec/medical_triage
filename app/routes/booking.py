@@ -170,7 +170,6 @@
 
 from fastapi import APIRouter, Request, HTTPException
 from services.booking_service import (
-    book_appointment,
     get_appointments,
     get_appointments_by_patient,
     delete_appointment,
