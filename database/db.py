@@ -397,6 +397,16 @@ DOCTOR_CATALOG = [
         }
     },
     {
+        "doctor_id": 15,
+        "name": "Dr. Soumya Basu",
+        "specialty": "general_physician",
+        "area": "ballygunge",
+        "schedule": {
+            "Tuesday": ["10:00-12:00"],
+            "Friday": ["15:00-16:00"]
+        }
+    },
+    {
         "doctor_id": 5,
         "name": "Dr. Suman Chatterjee",
         "specialty": "cardiologist",
@@ -434,6 +444,16 @@ DOCTOR_CATALOG = [
         "schedule": {
             "Monday": ["10:00-12:00"],
             "Friday": ["09:00-11:00"]
+        }
+    },
+    {
+        "doctor_id": 16,
+        "name": "Dr. Rahul Verma",
+        "specialty": "general_physician",
+        "area": "new town",
+        "schedule": {
+            "Wednesday": ["09:00-11:00"],
+            "Saturday": ["10:00-11:00"]
         }
     },
     {
@@ -494,6 +514,17 @@ DOCTOR_CATALOG = [
         "schedule": {
             "Monday": ["09:00-10:00"],
             "Friday": ["16:00-17:00"]
+        }
+    },
+    
+    {
+        "doctor_id": 17,
+        "name": "Dr. Ipsita Mukherjee",
+        "specialty": "general_physician",
+        "area": "dum dum",
+        "schedule": {
+            "Monday": ["10:00-12:00"],
+            "Thursday": ["14:00-15:00"]
         }
     }
 ]

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>ArogyaLav – Smart Medical Triage</title>
+    <title>ArogyaLav - Smart Medical Triage</title>
 
     <!-- Tailwind CSS (v3 CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +20,10 @@
     <!-- App Scripts -->
     <script defer src="/static/app_v2.js"></script>
     <script defer src="/static/auth.js"></script>
+    <script defer src="/static/voice.js"></script>
+    <!-- 🔧 MODIFICATION: Voice command support -->
+    <!-- NOTE: voice.js must define startVoiceInput() -->
+    <script defer src="/static/voice.js"></script>
 </head>
 
 <body class="bg-emerald-50/40 font-sans text-gray-900">
@@ -39,21 +43,21 @@
         <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <div class="flex items-center gap-3">
-        <img
-            src="/static/assets/logo/arogyalav-icon.png"
-            alt="ArogyaLav logo"
-            class="h-9 w-9"
-        />
+                    <img
+                        src="/static/assets/logo/arogyalav-icon.png"
+                        alt="ArogyaLav logo"
+                        class="h-9 w-9"
+                    />
 
-        <div class="flex flex-col leading-tight">
-            <span class="text-lg font-semibold tracking-tight text-gray-900">
-            ArogyaLav
-            </span>
-            <span class="text-xs font-medium tracking-wide text-emerald-600">
-            Smart Medical Triage
-            </span>
-        </div>
-        </div>
+                    <div class="flex flex-col leading-tight">
+                        <span class="text-lg font-semibold tracking-tight text-gray-900">
+                            ArogyaLav
+                        </span>
+                        <span class="text-xs font-medium tracking-wide text-emerald-600">
+                            Smart Medical Triage
+                        </span>
+                    </div>
+                </div>
             </div>
 
             <div class="flex gap-2">
@@ -97,7 +101,10 @@
             <div class="h-full bg-emerald-600 animate-pulse"></div>
         </div>
 
-        <!-- Input Area -->
+        <!-- ================= INPUT AREA ================= -->
+
+        <!-- ❌ OLD INPUT AREA (COMMENTED — DO NOT DELETE) -->
+        <!--
         <div class="flex gap-2">
             <input
                 id="user-input"
@@ -117,6 +124,44 @@
                 Continue
             </button>
         </div>
+        -->
+
+        <!-- ✅ MODIFIED INPUT AREA WITH VOICE COMMAND SUPPORT -->
+        <div class="flex gap-2 items-center">
+
+            <!-- 🎤 Voice Input Button -->
+            <button
+                id="voiceBtn"
+                type="button"
+                title="Speak your symptoms"
+                class="px-3 py-2 rounded-md border border-gray-300
+                       hover:bg-gray-100 text-gray-700"
+                onclick="startVoiceInput()"
+            >
+                🎤
+            </button>
+
+            <input
+                id="user-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Describe your symptoms..."
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md
+                       focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                onkeydown="if(event.key === 'Enter') sendMessage()"
+            />
+
+            <button
+                onclick="sendMessage()"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white
+                       rounded-md font-medium"
+            >
+                Continue
+            </button>
+        </div>
+
+        <!-- ================= END INPUT AREA ================= -->
+
     </main>
 </div>
 
